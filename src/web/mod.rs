@@ -26,16 +26,16 @@ impl<'a, N> Processor<'a, N> where N: INode {
 
 impl<'a, N> Consolidator for Processor<'a, N> where N: INode {
     fn child<C>(&mut self, child: C) where C: Child {
-        child.render(self.node);
+        child.insert(self.node);
     }
 }
 
-trait Render {
-    fn render<N>(self, node: &mut N) where N: INode;
+trait Insert {
+    fn insert<N>(self, node: &mut N) where N: INode;
 }
 
-impl<C> Render for C where C: Child {
-    fn render<N>(self, node: &mut N) where N: INode {
+impl<C> Insert for C where C: Child {
+    fn insert<N>(self, node: &mut N) where N: INode {
         match self.flatten() {
             Grain::Empty => {
                 // NOOP
@@ -55,7 +55,7 @@ impl<C> Render for C where C: Child {
                 element.bridge(event_handler);
 
                 node.append_child(&element);
-                child.render(&mut element);
+                child.insert(&mut element);
             },
         }
     }
@@ -83,8 +83,8 @@ where
         }
     }
 
-    pub fn render(&mut self, state: S) {
-        self.app.render(state).render(&mut self.root);
+    pub fn update(&mut self, state: S) {
+        self.app.render(state).insert(&mut self.root);
     }
 }
 
@@ -104,7 +104,7 @@ where
 
             let mut renderer = Renderer::new(app, element.clone());
 
-            renderer.render(Default::default());
+            renderer.update(Default::default());
         }
     } else {
         eprintln!("Could not find #{}", root);
