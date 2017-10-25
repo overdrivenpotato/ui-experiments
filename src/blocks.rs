@@ -1,7 +1,6 @@
-use ui::{font, Color, Style};
-use ui::position::Position;
+use ui::Style;
 
-use events::{EmptyEvents, Coordinates, Button, Events, EventHandler};
+use events::{EmptyEvents, EventHandler};
 
 pub struct Data<E> {
     style: Style,
@@ -18,15 +17,15 @@ impl Default for Data<EmptyEvents> {
 }
 
 impl<E> Data<E> {
-    fn with(style: Style, event_handler: E) -> Data<E> {
+    pub fn with(style: Style, event_handler: E) -> Data<E> {
         Data { style, event_handler }
     }
 
-    fn style(self, style: Style) -> Data<E> {
+    pub fn style(self, style: Style) -> Data<E> {
         Data { style, ..self }
     }
 
-    fn events<H>(self, handler: H) -> Data<H> {
+    pub fn events<H>(self, handler: H) -> Data<H> {
         Data {
             style: self.style,
             event_handler: handler,
@@ -189,42 +188,10 @@ impl<E, C> Block for Baked<E, C> where E: EventHandler, C: Child {
     }
 }
 
-fn block<E, C>(data: Data<E>, child: C) -> impl Block<Message = E::Message>
+pub fn block<E, C>(data: Data<E>, child: C) -> impl Block<Message = E::Message>
 where
     E: EventHandler,
     C: Child,
 {
     Baked { data, child }
-}
-
-pub fn test() -> impl Block<Message = ()> {
-    let style = Style {
-        position: Position::Anchor,
-        font: font::Font {
-            family: String::from("Arial"),
-            weight: font::Weight::Regular,
-            style: font::Style::Italic,
-            color: Color::black(),
-        },
-        .. Style::default()
-    };
-
-    let events = Events::new()
-        .click(|Coordinates { x, y }| println!("Mouse clicked at {}, {}", x, y))
-        .up(|Coordinates { x, y }, button| {
-            match button {
-                Button::Left => println!("Left mouse up at {}, {}", x, y),
-                _ => println!("Mouse up with another button at {}, {}", x, y),
-            }
-        });
-
-    block(Data::with(style, events), (
-        block(Data::default(), (
-            "Sub",
-            "Test",
-        )),
-        "Testing",
-        "123",
-        "456",
-    ))
 }
