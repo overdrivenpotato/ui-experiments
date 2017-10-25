@@ -1,8 +1,11 @@
-use stdweb;
-use stdweb::web::{self, INode};
+use stdweb::{self, Value};
+use stdweb::unstable::TryInto;
+use stdweb::web::{self, INode, IEventTarget};
+use stdweb::web::event::IMouseEvent;
 
 use blocks::{Block, Child, Data, Grain, Consolidator, Group};
 use ui::{font, Color, Style};
+use events::{Coordinates, Event, EventHandler};
 
 struct Css {
     rendered: Vec<String>,
@@ -115,11 +118,48 @@ impl<C> Render for C where C: Child {
                 let mut processor = Processor::new(node);
                 group.consolidate(&mut processor);
             },
-            Grain::Block(Data { style, .. }, child) => {
+            Grain::Block(Data { style, event_handler }, child) => {
                 let mut element = web::document().create_element("div");
                 let style = style.inline();
 
                 js! { @{&element}.setAttribute("style", @{style}) }
+
+                let element_clone = element.clone();
+                element.add_event_listener(move |click: web::event::ClickEvent| {
+                    let js_x = js! {
+                        function offset(element) {
+                            var parentOffset = element.offsetParent ? offset(element.offsetParent) : 0;
+                            return element.offsetLeft + parentOffset;
+                        }
+
+                        return offset(@{&element_clone});
+                    };
+
+                    let js_y = js! {
+                        function offset(element) {
+                            var parentOffset = element.offsetParent ? offset(element.offsetParent) : 0;
+                            return element.offsetTop + parentOffset;
+                        }
+
+                        return offset(@{&element_clone});
+                    };
+
+                    match (js_x, js_y) {
+                        (Value::Number(number_x), Value::Number(number_y)) => {
+                            match (TryInto::<u32>::try_into(number_x), TryInto::<u32>::try_into(number_y)) {
+                                (Ok(offset_x), Ok(offset_y)) => {
+                                    let x = click.client_x() as u32 - offset_x;
+                                    let y = click.client_y() as u32 - offset_y;
+
+                                    event_handler.event(Event::Click(Coordinates { x, y }));
+                                }
+                                _ => panic!("Failed to convert element offset to number"),
+                            }
+                        }
+                        // This should never happen.
+                        _ => unreachable!("Could not calculate element offsets"),
+                    }
+                });
 
                 node.append_child(&element);
                 child.render(&mut element);

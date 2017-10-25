@@ -57,7 +57,7 @@ pub enum Grain<E, G, C> {
 pub trait Child {
     type Group: Group;
     type Child: Child;
-    type EventHandler: EventHandler;
+    type EventHandler: EventHandler + 'static;
 
     fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child>;
 }
@@ -96,7 +96,7 @@ impl<B> Child for B
 where
     B: Block,
     B::Child: Child,
-    B::EventHandler: EventHandler,
+    B::EventHandler: EventHandler + 'static,
 {
     type Group = !;
     type Child = B::Child;
@@ -172,13 +172,13 @@ pub struct Baked<E, C> {
 /// Wrapper around `Baked` to allow for easy use of `impl Trait`.
 pub trait Block {
     type Message;
-    type EventHandler: EventHandler<Message = Self::Message>;
+    type EventHandler: EventHandler<Message = Self::Message> + 'static;
     type Child: Child;
 
     fn extract(self) -> Baked<Self::EventHandler, Self::Child>;
 }
 
-impl<E, C> Block for Baked<E, C> where E: EventHandler, C: Child {
+impl<E, C> Block for Baked<E, C> where E: EventHandler + 'static, C: Child {
     type Message = E::Message;
     type EventHandler = E;
     type Child = C;
@@ -190,7 +190,7 @@ impl<E, C> Block for Baked<E, C> where E: EventHandler, C: Child {
 
 pub fn block<E, C>(data: Data<E>, child: C) -> impl Block<Message = E::Message>
 where
-    E: EventHandler,
+    E: EventHandler + 'static,
     C: Child,
 {
     Baked { data, child }
