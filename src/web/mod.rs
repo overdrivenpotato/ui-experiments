@@ -1,7 +1,11 @@
+use std::marker::PhantomData;
+
 use stdweb;
-use stdweb::web::{self, INode};
+use stdweb::web::{self, INode, Element};
 
 use blocks::{Block, Child, Data, Grain, Consolidator, Group};
+
+use super::{App, State};
 
 mod css;
 mod events;
@@ -57,8 +61,40 @@ impl<C> Render for C where C: Child {
     }
 }
 
+struct Renderer<A, S, B> {
+    app: A,
+    root: Element,
+    _state: PhantomData<S>,
+    _block: PhantomData<B>,
+}
+
+impl<A, S, B> Renderer<A, S, B>
+where
+    A: App<S, B>,
+    B: Block,
+    S: State<Message = B::Message>,
+{
+    fn new(app: A, root: Element) -> Self {
+        Renderer {
+            app,
+            root,
+            _state: PhantomData,
+            _block: PhantomData,
+        }
+    }
+
+    pub fn render(&mut self, state: S) {
+        self.app.render(state).render(&mut self.root);
+    }
+}
+
 /// Launch the app with a root element ID.
-pub fn launch<T>(root: &'static str, block: T) where T: Block {
+pub fn launch<S, B, A>(root: &'static str, app: A)
+where
+    A: App<S, B>,
+    B: Block,
+    S: State<Message = B::Message>,
+{
     stdweb::initialize();
 
     if let Some(root) = web::document().get_element_by_id(&root) {
@@ -66,7 +102,9 @@ pub fn launch<T>(root: &'static str, block: T) where T: Block {
             let mut element = web::document().create_element("div");
             parent.replace_child(&element, &root);
 
-            block.render(&mut element);
+            let mut renderer = Renderer::new(app, element.clone());
+
+            renderer.render(Default::default());
         }
     } else {
         eprintln!("Could not find #{}", root);

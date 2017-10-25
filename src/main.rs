@@ -16,6 +16,33 @@ use ui::border::Border;
 use events::{Coordinates, Events};
 use blocks::{block, Block, Data};
 
+pub trait State: Default {
+    type Message;
+
+    fn reduce(self, message: Self::Message) -> Self;
+}
+
+impl State for () {
+    type Message = ();
+
+    fn reduce(self, _message: ()) -> () { () }
+}
+
+pub trait App<S, B>: Copy where B: Block, S: State<Message = B::Message> {
+    fn render(&self, state: S) -> B;
+}
+
+impl<S, B, F> App<S, B> for F
+where
+    B: Block,
+    S: State<Message = B::Message>,
+    F: Fn(S) -> B + Copy,
+{
+    fn render(&self, state: S) -> B {
+        self(state)
+    }
+}
+
 fn sub_block() -> impl Block<Message = ()> {
     let style = Style {
         font: Font {
@@ -48,7 +75,7 @@ fn sub_block() -> impl Block<Message = ()> {
     ))
 }
 
-pub fn test() -> impl Block<Message = ()> {
+pub fn test(_state: ()) -> impl Block<Message = ()> {
     let style = Style {
         position: Position::Anchor,
         font: Font {
@@ -84,5 +111,5 @@ pub fn test() -> impl Block<Message = ()> {
 
 fn main() {
     #[cfg(target_os = "emscripten")]
-    web::launch("root", test());
+    web::launch("root", test);
 }
