@@ -38,6 +38,7 @@ pub fn test() -> impl Block<Message = ()> {
     let sub_style = Style {
         font: Font {
             family: font::Family::Name(String::from("serif")),
+            color: Color::green(),
             .. Font::default()
         },
         .. Style::default()

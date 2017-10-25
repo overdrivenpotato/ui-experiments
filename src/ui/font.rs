@@ -12,9 +12,7 @@ pub enum Weight {
 #[derive(Debug, Clone)]
 pub enum Style {
     Regular,
-    Bold,
     Italic,
-    BoldItalic,
 }
 
 #[derive(Debug, Clone)]

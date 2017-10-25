@@ -10,15 +10,23 @@ pub mod reactive;
 pub mod font;
 
 #[derive(Debug, Default, Copy, Clone)]
-pub struct Color(f32, f32, f32, f32);
+pub struct Color(u8, u8, u8, u8);
 
 impl Color {
+    pub fn get_rgba(&self) -> (u8, u8, u8, u8) {
+        (self.0, self.1, self.2, self.3)
+    }
+
     pub fn black() -> Color {
-        Color(0.0, 1.0, 0.0, 1.0)
+        Color(0, 0, 0, 255)
     }
 
     pub fn green() -> Color {
-        Color(0.0, 1.0, 0.0, 1.0)
+        Color(0, 128, 0, 255)
+    }
+
+    pub fn red() -> Color {
+        Color(128, 0, 0, 255)
     }
 }
 
