@@ -1,4 +1,5 @@
 #![feature(conservative_impl_trait, never_type)]
+#![recursion_limit="128"]
 
 #[macro_use] extern crate stdweb;
 
@@ -11,7 +12,8 @@ mod events;
 use ui::*;
 use ui::position::Position;
 use ui::font::Font;
-use events::{Button, Coordinates, Events};
+use ui::border::Border;
+use events::{Coordinates, Events};
 use blocks::{block, Block, Data};
 
 fn sub_block() -> impl Block<Message = ()> {
@@ -21,10 +23,21 @@ fn sub_block() -> impl Block<Message = ()> {
             color: Color::green(),
             .. Font::default()
         },
+        border: Border {
+            width: Length(2.0),
+            color: Color::green(),
+            .. Border::default()
+        },
         .. Style::default()
     };
 
     let events = Events::new()
+        .down(|Coordinates { x, y }, button| {
+            println!("Button {:?} down in sub block at {}, {}", button, x, y);
+        })
+        .up(|Coordinates { x, y }, button| {
+            println!("Button {:?} up in sub block at {}, {}", button, x, y);
+        })
         .click(|Coordinates { x, y }| {
             println!("Mouse clicked in sub block at {}, {}", x, y);
         });
@@ -44,16 +57,21 @@ pub fn test() -> impl Block<Message = ()> {
             style: font::Style::Italic,
             color: Color::black(),
         },
+        border: Border {
+            color: Color::black(),
+            width: Length(2.0),
+            .. Border::default()
+        },
         .. Style::default()
     };
 
     let events = Events::new()
         .click(|Coordinates { x, y }| println!("Mouse clicked at {}, {}", x, y))
+        .down(|Coordinates { x, y }, button| {
+            println!("Button {:?} down at {}, {}", button, x, y);
+        })
         .up(|Coordinates { x, y }, button| {
-            match button {
-                Button::Left => println!("Left mouse up at {}, {}", x, y),
-                _ => println!("Mouse up with another button at {}, {}", x, y),
-            }
+            println!("Button {:?} up at {}, {}", button, x, y);
         });
 
     block(Data::with(style, events), (

@@ -61,8 +61,13 @@ impl<C> Render for C where C: Child {
 pub fn launch<T>(root: &'static str, block: T) where T: Block {
     stdweb::initialize();
 
-    if let Some(mut root) = web::document().get_element_by_id(&root) {
-        block.render(&mut root);
+    if let Some(root) = web::document().get_element_by_id(&root) {
+        if let Some(mut parent) = root.parent_node() {
+            let mut element = web::document().create_element("div");
+            parent.replace_child(&element, &root);
+
+            block.render(&mut element);
+        }
     } else {
         eprintln!("Could not find #{}", root);
     }

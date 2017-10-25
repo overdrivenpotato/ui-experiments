@@ -1,7 +1,8 @@
 use stdweb::web::Element;
 
 use web::Bridge;
-use ui::{font, Color, Style};
+use ui::{font, EdgeMode, Color, Length, Style};
+use ui::border::Border;
 
 impl Bridge<Style> for Element {
     fn bridge(&mut self, style: Style) {
@@ -52,6 +53,12 @@ impl Inline for Color {
     }
 }
 
+impl Inline for Length {
+    fn inline(&self) -> String {
+        format!("{}px", self.0)
+    }
+}
+
 impl Inline for font::Font {
     fn inline(&self) -> String {
         let mut css = Css::new();
@@ -80,10 +87,27 @@ impl Inline for font::Font {
     }
 }
 
+impl Inline for Border {
+    fn inline(&self) -> String {
+        let mut css = Css::new();
+
+        css.property("border-color", self.color.inline());
+        css.property("border-width", self.width.inline());
+        css.property("box-sizing", match self.mode {
+            EdgeMode::Inset => "border-box",
+            EdgeMode::Outset => "content-box",
+        });
+        css.property("border-style", String::from("solid"));
+
+        css.render()
+    }
+}
+
 impl Inline for Style {
     fn inline(&self) -> String {
         [
             self.font.inline(),
+            self.border.inline(),
         ].join(";")
     }
 }
