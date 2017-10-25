@@ -17,13 +17,11 @@ impl Default for Data<EmptyEvents> {
     }
 }
 
-impl Data<EmptyEvents> {
-    fn new() -> Self {
-        Default::default()
-    }
-}
-
 impl<E> Data<E> {
+    fn with(style: Style, event_handler: E) -> Data<E> {
+        Data { style, event_handler }
+    }
+
     fn style(mut self, style: Style) -> Data<E> {
         Data { style, ..self }
     }
@@ -220,10 +218,8 @@ pub fn test() -> impl Block<Message = ()> {
             }
         });
 
-    let data = Data::new().style(style).events(events);
-
-    block(data, (
-        block(Data::new(), (
+    block(Data::with(style, events), (
+        block(Data::default(), (
             "Sub",
             "Test",
         )),
