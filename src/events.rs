@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 pub enum Event {
     Click(Coordinates),
     Down(Coordinates, Button),
@@ -38,6 +40,32 @@ impl<M, C, D, U> EventHandler for Events<M, C, D, U>
 pub struct Coordinates {
     pub x: u32,
     pub y: u32,
+}
+
+impl Into<Offset> for Coordinates {
+    fn into(self) -> Offset {
+        Offset {
+            x: self.x as i32,
+            y: self.y as i32,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Offset {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl Sub<Offset> for Coordinates {
+    type Output = Coordinates;
+
+    fn sub(self, rhs: Offset) -> Self::Output {
+        Coordinates {
+            x: (self.x as i32 - rhs.x) as u32,
+            y: (self.y as i32 - rhs.y) as u32,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

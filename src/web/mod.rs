@@ -6,7 +6,9 @@ use blocks::{Block, Child, Data, Grain, Consolidator, Group};
 mod css;
 mod events;
 
-use self::css::Inline;
+trait Bridge<T> {
+    fn bridge(&mut self, T);
+}
 
 struct Processor<'a, N> where N: 'a {
     node: &'a mut N,
@@ -44,11 +46,9 @@ impl<C> Render for C where C: Child {
             },
             Grain::Block(Data { style, event_handler }, child) => {
                 let mut element = web::document().create_element("div");
-                let style = style.inline();
 
-                js! { @{&element}.setAttribute("style", @{style}) }
-
-                events::Bridge::bridge(&mut element, event_handler);
+                element.bridge(style);
+                element.bridge(event_handler);
 
                 node.append_child(&element);
                 child.render(&mut element);

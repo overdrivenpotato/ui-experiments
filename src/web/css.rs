@@ -1,4 +1,15 @@
+use stdweb::web::Element;
+
+use web::Bridge;
 use ui::{font, Color, Style};
+
+impl Bridge<Style> for Element {
+    fn bridge(&mut self, style: Style) {
+        js! {
+            @{&*self}.setAttribute("style", @{style.inline()})
+        }
+    }
+}
 
 pub struct Css {
     rendered: Vec<String>,
