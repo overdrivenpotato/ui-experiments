@@ -1,6 +1,6 @@
 #![feature(conservative_impl_trait, never_type)]
 
-extern crate stdweb;
+#[macro_use] extern crate stdweb;
 
 mod ui;
 mod blocks;
@@ -10,14 +10,15 @@ mod events;
 
 use ui::*;
 use ui::position::Position;
+use ui::font::Font;
 use events::{Button, Coordinates, Events};
 use blocks::{block, Block, Data};
 
 pub fn test() -> impl Block<Message = ()> {
     let style = Style {
         position: Position::Anchor,
-        font: font::Font {
-            family: String::from("Arial"),
+        font: Font {
+            family: String::from("sans-serif"),
             weight: font::Weight::Regular,
             style: font::Style::Italic,
             color: Color::black(),
@@ -34,8 +35,16 @@ pub fn test() -> impl Block<Message = ()> {
             }
         });
 
+    let sub_style = Style {
+        font: Font {
+            family: String::from("serif"),
+            .. Font::default()
+        },
+        .. Style::default()
+    };
+
     block(Data::with(style, events), (
-        block(Data::default(), (
+        block(Data::default().style(sub_style), (
             "Sub",
             "Test",
         )),

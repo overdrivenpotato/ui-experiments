@@ -1,7 +1,22 @@
 use stdweb;
 use stdweb::web::{self, INode};
 
-use blocks::{Block, Child, Grain, Consolidator, Group};
+use blocks::{Block, Child, Data, Grain, Consolidator, Group};
+use ui::Style;
+
+trait Inline {
+    fn inline(self) -> String;
+}
+
+impl Inline for Style {
+    fn inline(self) -> String {
+        let mut styles = Vec::new();
+
+        styles.push(format!("font-family: {}", self.font.family));
+
+        styles.join(";")
+    }
+}
 
 struct Processor<'a, N> where N: 'a {
     node: &'a mut N,
@@ -37,8 +52,12 @@ impl<C> Render for C where C: Child {
                 let mut processor = Processor::new(node);
                 group.consolidate(&mut processor);
             },
-            Grain::Block(_, child) => {
+            Grain::Block(Data { style, .. }, child) => {
                 let mut element = web::document().create_element("div");
+                let style = style.inline();
+
+                js! { @{&element}.setAttribute("style", @{style}) }
+
                 node.append_child(&element);
                 child.render(&mut element);
             },

@@ -3,8 +3,8 @@ use ui::Style;
 use events::{EmptyEvents, EventHandler};
 
 pub struct Data<E> {
-    style: Style,
-    event_handler: E,
+    pub style: Style,
+    pub event_handler: E,
 }
 
 impl Default for Data<EmptyEvents> {
