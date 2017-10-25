@@ -1,7 +1,7 @@
 use ui::{font, Color, Style};
 use ui::position::Position;
 
-use events::{EmptyEvents, Event, Coordinates, Button, Events, EventHandler};
+use events::{EmptyEvents, Coordinates, Button, Events, EventHandler};
 
 pub struct Data<E> {
     style: Style,
@@ -22,7 +22,7 @@ impl<E> Data<E> {
         Data { style, event_handler }
     }
 
-    fn style(mut self, style: Style) -> Data<E> {
+    fn style(self, style: Style) -> Data<E> {
         Data { style, ..self }
     }
 

@@ -13,7 +13,7 @@ pub trait EventHandler {
 impl EventHandler for ! {
     type Message = !;
 
-    fn event(&self, event: Event) -> Option<Self::Message> {
+    fn event(&self, _: Event) -> Option<Self::Message> {
         unreachable!()
     }
 }
