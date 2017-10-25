@@ -1,0 +1,11 @@
+target/
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+*.swx
+*.swpx
+
+.DS_Store
