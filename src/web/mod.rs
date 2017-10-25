@@ -2,7 +2,7 @@ use stdweb;
 use stdweb::web::{self, INode};
 
 use blocks::{Block, Child, Data, Grain, Consolidator, Group};
-use ui::Style;
+use ui::{font, Style};
 
 trait Inline {
     fn inline(self) -> String;
@@ -12,7 +12,10 @@ impl Inline for Style {
     fn inline(self) -> String {
         let mut styles = Vec::new();
 
-        styles.push(format!("font-family: {}", self.font.family));
+        styles.push(format!("font-family: {}", match self.font.family {
+            font::Family::Inherit => "inherit".to_string(),
+            font::Family::Name(name) => name,
+        }));
 
         styles.join(";")
     }

@@ -18,7 +18,7 @@ pub fn test() -> impl Block<Message = ()> {
     let style = Style {
         position: Position::Anchor,
         font: Font {
-            family: String::from("sans-serif"),
+            family: font::Family::Name(String::from("sans-serif")),
             weight: font::Weight::Regular,
             style: font::Style::Italic,
             color: Color::black(),
@@ -37,7 +37,7 @@ pub fn test() -> impl Block<Message = ()> {
 
     let sub_style = Style {
         font: Font {
-            family: String::from("serif"),
+            family: font::Family::Name(String::from("serif")),
             .. Font::default()
         },
         .. Style::default()

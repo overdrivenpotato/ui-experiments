@@ -18,8 +18,14 @@ pub enum Style {
 }
 
 #[derive(Debug, Clone)]
+pub enum Family {
+    Inherit,
+    Name(String),
+}
+
+#[derive(Debug, Clone)]
 pub struct Font {
-    pub family: String,
+    pub family: Family,
     pub weight: Weight,
     pub style: Style,
     pub color: Color,
@@ -28,7 +34,7 @@ pub struct Font {
 impl Default for Font {
     fn default() -> Self {
         Font {
-            family: String::from("Arial"),
+            family: Family::Inherit,
             weight: Weight::Regular,
             style: Style::Regular,
             color: Color::black(),
