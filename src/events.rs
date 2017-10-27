@@ -23,7 +23,7 @@ impl EventHandler for ! {
 impl<M, C, D, U> EventHandler for Events<M, C, D, U>
     where C: Fn(Coordinates) -> M,
           D: Fn(Coordinates, Button) -> M,
-          U: Fn(Coordinates, Button) -> M
+          U: Fn(Coordinates, Button) -> M,
 {
     type Message = M;
 
@@ -85,7 +85,7 @@ pub struct Events<M, C, D, U>
     up: Option<U>,
 }
 
-type DefaultEvents<M> = Events<
+pub type DefaultEvents<M> = Events<
     M,
     fn(Coordinates) -> M,
     fn(Coordinates, Button) -> M,

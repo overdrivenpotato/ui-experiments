@@ -5,7 +5,7 @@ use stdweb::unstable::TryInto;
 use stdweb::web::{Element, IEventTarget};
 use stdweb::web::event::{self, IMouseEvent};
 
-use web::Bridge;
+use web::Messenger;
 use events::{Button, Coordinates, Event, EventHandler};
 
 trait FromMouseCode {
@@ -55,25 +55,38 @@ impl PageCoordinates for Element {
                 }
             }
             // This should never happen.
-            _ => unreachable!("Could not calculate element offsets"),
+            _ => panic!("Could not calculate element offsets"),
         }
     }
 }
 
-impl<E> Bridge<E> for Element where E: EventHandler + 'static {
-    fn bridge(&mut self, event_handler: E) {
+pub trait SetHandler<E, U> {
+    fn set_handler(&mut self, event_handler: E, updater: U);
+}
+
+impl<E, U> SetHandler<E, U> for Element
+where
+    E: EventHandler<Message = U::Message> + 'static,
+    U: Messenger + 'static,
+{
+    fn set_handler(&mut self, event_handler: E, updater: U) {
         let event_handler = Rc::new(event_handler);
 
         let page_coordinates = self.page_coordinates();
 
         let event_handler_click = event_handler.clone();
+        let updater_click = updater.clone();
         self.add_event_listener(move |click: event::ClickEvent| {
             let client = Coordinates {
                 x: click.client_x() as u32,
                 y: click.client_y() as u32,
             };
 
-            event_handler_click.event(Event::Click(client - page_coordinates.into()));
+            let event = Event::Click(client - page_coordinates.into());
+
+            if let Some(message) = event_handler_click.event(event) {
+                updater_click.message(message);
+            }
         });
 
         let event_handler_mouse_down = event_handler.clone();

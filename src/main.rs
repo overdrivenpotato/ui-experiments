@@ -23,27 +23,27 @@ pub trait State: Default {
 }
 
 impl State for () {
-    type Message = ();
+    type Message = !;
 
-    fn reduce(self, _message: ()) -> () { () }
+    fn reduce(self, _message: !) -> () { () }
 }
 
 pub trait App<S, B>: Copy where B: Block, S: State<Message = B::Message> {
-    fn render(&self, state: S) -> B;
+    fn render(&self, state: &S) -> B;
 }
 
 impl<S, B, F> App<S, B> for F
 where
     B: Block,
     S: State<Message = B::Message>,
-    F: Fn(S) -> B + Copy,
+    F: Fn(&S) -> B + Copy,
 {
-    fn render(&self, state: S) -> B {
+    fn render(&self, state: &S) -> B {
         self(state)
     }
 }
 
-fn sub_block() -> impl Block<Message = ()> {
+fn sub_block() -> impl Block<Message = !> {
     let style = Style {
         font: Font {
             family: font::Family::Name(String::from("serif")),
@@ -51,14 +51,14 @@ fn sub_block() -> impl Block<Message = ()> {
             .. Font::default()
         },
         border: Border {
-            width: Length(2.0),
+            width: Length(1.0),
             color: Color::green(),
             .. Border::default()
         },
         .. Style::default()
     };
 
-    let events = Events::new()
+    let _events = Events::new()
         .down(|Coordinates { x, y }, button| {
             println!("Button {:?} down in sub block at {}, {}", button, x, y);
         })
@@ -69,13 +69,13 @@ fn sub_block() -> impl Block<Message = ()> {
             println!("Mouse clicked in sub block at {}, {}", x, y);
         });
 
-    block(Data::with(style, events), (
+    block(Data::with(style, Events::new()), (
         "Sub",
         "Block",
     ))
 }
 
-pub fn test(_state: ()) -> impl Block<Message = ()> {
+pub fn test(_state: &()) -> impl Block<Message = !> {
     let style = Style {
         position: Position::Anchor,
         font: Font {
@@ -92,7 +92,7 @@ pub fn test(_state: ()) -> impl Block<Message = ()> {
         .. Style::default()
     };
 
-    let events = Events::new()
+    let _events = Events::new()
         .click(|Coordinates { x, y }| println!("Mouse clicked at {}, {}", x, y))
         .down(|Coordinates { x, y }, button| {
             println!("Button {:?} down at {}, {}", button, x, y);
@@ -101,7 +101,7 @@ pub fn test(_state: ()) -> impl Block<Message = ()> {
             println!("Button {:?} up at {}, {}", button, x, y);
         });
 
-    block(Data::with(style, events), (
+    block(Data::with(style, Events::new()), (
         "Testing",
         "123",
         "456",
