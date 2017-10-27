@@ -109,7 +109,7 @@ impl<B> Child for B where B: Block {
     type EventHandler = B::EventHandler;
 
     fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child> {
-        let Baked { data, child } = self.extract();
+        let BlockData { data, child } = self.extract();
 
         Grain::Block(data, child)
     }
@@ -177,27 +177,27 @@ impl_child_tuple! {
     (A B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14, P 15, Q 16, R 17, S 18, T 19, U 20, V 21, W 22, X 23, Y 24, Z 25),
 }
 
-pub struct Baked<E, C> {
+pub struct BlockData<E, C> {
     pub data: Data<E>,
     pub child: C,
 }
 
-/// Wrapper around `Baked` to allow for easy use of `impl Trait`.
+/// Wrapper around `BlockData` to allow for easy use of `impl Trait`.
 pub trait Block {
     /// Convenience type for messaging.
     type Message;
     type EventHandler: EventHandler<Message = Self::Message> + 'static;
     type Child: Child<Message = Self::Message>;
 
-    fn extract(self) -> Baked<Self::EventHandler, Self::Child>;
+    fn extract(self) -> BlockData<Self::EventHandler, Self::Child>;
 }
 
-impl<E, C> Block for Baked<E, C> where E: EventHandler + 'static, C: Child<Message = E::Message> {
+impl<E, C> Block for BlockData<E, C> where E: EventHandler + 'static, C: Child<Message = E::Message> {
     type Message = E::Message;
     type EventHandler = E;
     type Child = C;
 
-    fn extract(self) -> Baked<Self::EventHandler, Self::Child> {
+    fn extract(self) -> BlockData<Self::EventHandler, Self::Child> {
         self
     }
 }
@@ -207,5 +207,5 @@ where
     E: EventHandler + 'static,
     C: Child<Message = E::Message>,
 {
-    Baked { data, child }
+    BlockData { data, child }
 }
