@@ -16,6 +16,15 @@ impl Default for Data<EmptyEvents> {
     }
 }
 
+impl<T> Data<DefaultEvents<T>> {
+    fn passthrough() -> Self {
+        Data {
+            style: Default::default(),
+            event_handler: DefaultEvents::new(),
+        }
+    }
+}
+
 impl<E> Data<E> {
     pub fn with(style: Style, event_handler: E) -> Data<E> {
         Data { style, event_handler }
@@ -31,87 +40,76 @@ impl<E> Data<E> {
             event_handler: handler,
         }
     }
+
+    pub fn block<C>(self, child: C) -> impl Block<Message = E::Message>
+    where
+        C: Child,
+        E: EventHandler + 'static,
+        E::Message: From<C::Message>,
+    {
+        BlockData { data: self, child }
+    }
 }
 
 pub trait Consolidator {
     type Message;
 
-    fn child<C>(&mut self, child: C) where C: Child<Message = Self::Message>;
+    fn child<C>(&mut self, C)
+    where
+        C: Child,
+        Self::Message: From<C::Message>,
+        C::Message: 'static;
 }
 
 pub trait Group {
     type Message;
 
-    fn consolidate<C>(self, &mut C) where C: Consolidator<Message = Self::Message>;
+    fn consolidate<C>(self, C) where C: Consolidator<Message = Self::Message>;
 }
 
-impl Group for ! {
-    type Message = !;
+pub trait Walker {
+    type Message;
 
-    fn consolidate<C>(self, _: &mut C) {
-        unreachable!()
-    }
-}
+    fn group<G>(self, G) -> Self where G: Group<Message = Self::Message>;
 
-pub enum Grain<E, G, C> {
-    Empty,
-    Text(&'static str),
-    Group(G),
-    Block(Data<E>, C),
+    fn block<E, C>(self, Data<E>, C) -> Self
+    where
+        E: EventHandler<Message = Self::Message> + 'static,
+        C: Child,
+        Self::Message: From<C::Message>;
+
+    fn text(self, text: &'static str) -> Self;
 }
 
 pub trait Child {
-    type Message;
-    type Group: Group<Message = Self::Message>;
-    type Child: Child<Message = Self::Message>;
-    type EventHandler: EventHandler<Message = Self::Message> + 'static;
+    type Message: 'static;
 
-    fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child>;
+    fn walk<T>(self, T) -> T where T: Walker<Message = Self::Message>;
 }
 
-impl Child for ! {
+impl Child for &'static str {
     type Message = !;
-    type Group = !;
-    type Child = !;
-    type EventHandler = !;
 
-    fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child> {
-        unreachable!()
+    fn walk<T>(self, walker: T) -> T where T: Walker<Message = Self::Message> {
+        walker.text(self)
     }
 }
 
 impl Child for () {
     type Message = !;
-    type Group = !;
-    type Child = !;
-    type EventHandler = !;
 
-    fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child> {
-        Grain::Empty
-    }
-}
-
-impl Child for &'static str {
-    type Message = !;
-    type Group = !;
-    type Child = !;
-    type EventHandler = !;
-
-    fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child> {
-        Grain::Text(self)
+    fn walk<T>(self, walker: T) -> T where T: Walker<Message = Self::Message> {
+        walker
     }
 }
 
 impl<B> Child for B where B: Block {
     type Message = B::Message;
-    type Group = (B::Child,); // Unused.
-    type Child = B::Child;
-    type EventHandler = B::EventHandler;
 
-    fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child> {
+    fn walk<T>(self, walker: T) -> T where T: Walker<Message = Self::Message> {
         let BlockData { data, child } = self.extract();
 
-        Grain::Block(data, child)
+        walker.block(data, child)
     }
 }
 
@@ -120,16 +118,12 @@ macro_rules! impl_child_tuple {
         impl<$Reference, $($T),*> Child for ($Reference, $($T),*)
         where
             $Reference: Child,
-            $Reference::Message: 'static,
             $($T: Child<Message = $Reference::Message>),*
         {
             type Message = $Reference::Message;
-            type Group = ($Reference, $($T),*);
-            type Child = $Reference;
-            type EventHandler = DefaultEvents<$Reference::Message>;
 
-            fn flatten(self) -> Grain<Self::EventHandler, Self::Group, Self::Child> {
-                Grain::Group(self)
+            fn walk<_T>(self, walker: _T) -> _T where _T: Walker<Message = Self::Message> {
+                walker.group(self)
             }
         }
 
@@ -140,7 +134,7 @@ macro_rules! impl_child_tuple {
         {
             type Message = $Reference::Message;
 
-            fn consolidate<_C>(self, consolidator: &mut _C) where _C: Consolidator<Message = Self::Message> {
+            fn consolidate<_C>(self, mut consolidator: _C) where _C: Consolidator<Message = Self::Message> {
                 consolidator.child(self.0);
                 $(consolidator.child(self.$idx);)*
             }
@@ -185,14 +179,19 @@ pub struct BlockData<E, C> {
 /// Wrapper around `BlockData` to allow for easy use of `impl Trait`.
 pub trait Block {
     /// Convenience type for messaging.
-    type Message;
+    type Message: From<<Self::Child as Child>::Message> + 'static;
     type EventHandler: EventHandler<Message = Self::Message> + 'static;
-    type Child: Child<Message = Self::Message>;
+    type Child: Child;
 
     fn extract(self) -> BlockData<Self::EventHandler, Self::Child>;
 }
 
-impl<E, C> Block for BlockData<E, C> where E: EventHandler + 'static, C: Child<Message = E::Message> {
+impl<E, C> Block for BlockData<E, C>
+where
+    E: EventHandler + 'static,
+    C: Child,
+    E::Message: From<C::Message>,
+{
     type Message = E::Message;
     type EventHandler = E;
     type Child = C;
@@ -202,10 +201,10 @@ impl<E, C> Block for BlockData<E, C> where E: EventHandler + 'static, C: Child<M
     }
 }
 
-pub fn block<E, C>(data: Data<E>, child: C) -> impl Block<Message = E::Message>
+pub fn block<M, C>(child: C) -> impl Block<Message = M>
 where
-    E: EventHandler + 'static,
-    C: Child<Message = E::Message>,
+    C: Child,
+    M: From<C::Message> + 'static,
 {
-    BlockData { data, child }
+    BlockData { data: Data::passthrough(), child }
 }

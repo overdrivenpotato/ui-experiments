@@ -90,15 +90,23 @@ where
         });
 
         let event_handler_mouse_down = event_handler.clone();
+        let updater_mouse_down = updater.clone();
         let mouse_down = move |x: u32, y: u32, button: u32| {
             let event = Event::Down(Coordinates { x, y }, button.from_mouse_code());
-            event_handler_mouse_down.event(event);
+
+            if let Some(message) = event_handler_mouse_down.event(event) {
+                updater_mouse_down.message(message);
+            }
         };
 
         let event_handler_mouse_up = event_handler.clone();
+        let updater_mouse_up = updater.clone();
         let mouse_up = move |x: u32, y: u32, button: u32| {
             let event = Event::Up(Coordinates { x, y }, button.from_mouse_code());
-            event_handler_mouse_up.event(event);
+
+            if let Some(message) = event_handler_mouse_up.event(event) {
+                updater_mouse_up.message(message);
+            }
         };
 
         js! {

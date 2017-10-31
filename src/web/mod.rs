@@ -7,7 +7,7 @@ use stdweb;
 use stdweb::web::{self, INode, Element};
 
 use events::EventHandler;
-use blocks::{Block, Child, Data, Grain, Consolidator, Group};
+use blocks::{Block, Child, Data, Consolidator, Group, Walker};
 
 use super::{App, State};
 
@@ -30,63 +30,95 @@ impl<'a, N, U> Processor<'a, N, U> {
 
 impl<'a, N, U> Consolidator for Processor<'a, N, U>
 where
-    N: INode,
     U: Messenger + 'static,
+    N: INode,
 {
     type Message = U::Message;
 
     fn child<C>(&mut self, child: C)
     where
-        C: Child<Message = Self::Message>,
+        C: Child,
+        Self::Message: From<C::Message>,
+        C::Message: 'static,
     {
-        child.flatten().insert(self.node, self.updater.clone());
+        child.walk(Processor::new(self.node, MessageConverter::wrap(self.updater.clone())));
     }
 }
 
-trait Insert {
-    type Message;
+impl<'a, N, U> Walker for Processor<'a, N, U>
+where
+    N: INode,
+    U: Messenger + 'static,
+    U::Message: 'static,
+{
+    type Message = U::Message;
 
-    fn insert<N, U>(self, node: &mut N, updater: U)
+    fn group<G>(self, group: G) -> Self
     where
-        N: INode,
-        U: Messenger<Message = Self::Message> + 'static;
+        G: Group<Message = Self::Message>
+    {
+        {
+            let processor = Processor::new(self.node, self.updater.clone());
+            group.consolidate(processor);
+        }
+
+        self
+    }
+
+    fn block<E, C>(self, Data { style, event_handler }: Data<E>, child: C) -> Self
+    where
+        E: EventHandler<Message = Self::Message> + 'static,
+        C: Child,
+        Self::Message: From<C::Message>,
+    {
+        let mut element = web::document().create_element("div");
+
+        element.set_style(style);
+        element.set_handler(event_handler, MessageConverter::wrap(self.updater.clone()));
+
+        self.node.append_child(&element);
+        child.walk(Processor::new(&mut element, MessageConverter::wrap(self.updater.clone())));
+
+        self
+    }
+
+    fn text(self, text: &'static str) -> Self {
+        let text = web::document().create_text_node(text);
+        self.node.append_child(&text);
+
+        self
+    }
 }
 
-impl<E, G, C> Insert for Grain<E, G, C>
-where
-    E: EventHandler + 'static,
-    G: Group<Message = E::Message>,
-    C: Child<Message = E::Message>,
-{
-    type Message = E::Message;
+struct MessageConverter<M, A> {
+    messenger: M,
+    _a: PhantomData<A>,
+}
 
-    fn insert<N, U>(self, node: &mut N, updater: U)
-    where
-        N: INode,
-        U: Messenger<Message = Self::Message> + 'static,
-    {
-        match self {
-            Grain::Empty => {
-                // NOOP
-            },
-            Grain::Text(text) => {
-                let text = web::document().create_text_node(text);
-                node.append_child(&text);
-            },
-            Grain::Group(group) => {
-                let mut processor = Processor::new(node, updater);
-                group.consolidate(&mut processor);
-            },
-            Grain::Block(Data { style, event_handler }, child) => {
-                let mut element = web::document().create_element("div");
+impl<M, A> MessageConverter<M, A> {
+    fn wrap(messenger: M) -> Self {
+        MessageConverter { messenger, _a: PhantomData }
+    }
+}
 
-                element.set_style(style);
-                element.set_handler(event_handler, updater.clone());
-
-                node.append_child(&element);
-                child.flatten().insert(&mut element, updater);
-            },
+impl<M, A> Clone for MessageConverter<M, A> where M: Clone {
+    fn clone(&self) -> Self {
+        MessageConverter {
+            messenger: self.messenger.clone(),
+            _a: PhantomData,
         }
+    }
+}
+
+impl<A, B, M> Messenger for MessageConverter<M, A>
+where
+    B: From<A>,
+    M: Messenger<Message = B>,
+{
+    type Message = A;
+
+    fn message(&self, message: Self::Message) {
+        self.messenger.message(message.into());
     }
 }
 
@@ -108,6 +140,7 @@ where
     A: App<S, B> + 'static,
     S: State + 'static,
     B: Block<Message = S::Message> + 'static,
+    B::Message: From<<B::Child as Child>::Message>,
 {
     fn start(app: A, root: Element, state: S) {
         let renderer: Renderer<A, S, B> = Renderer {
@@ -123,6 +156,7 @@ where
     }
 }
 
+/// Helper trait for updates.
 trait Update {
     fn update(&self);
 }
@@ -132,13 +166,26 @@ where
     A: App<S, B> + 'static,
     S: State + 'static,
     B: Block<Message = S::Message> + 'static,
+    B::Message: From<<B::Child as Child>::Message>,
 {
     fn update(&self) {
         let mut guard = self.borrow_mut();
 
-        let rendered = guard.app.render(&guard.state).flatten();
+        {
+            let element = guard.root.as_node();
 
-        rendered.insert(&mut guard.root, self.clone());
+            js! {
+                var node = @{element};
+
+                while (node.hasChildNodes()) {
+                    node.removeChild(node.lastChild);
+                }
+            }
+        }
+
+        let _ = guard.app
+            .render(&guard.state)
+            .walk(Processor::new(&mut guard.root, self.clone()));
     }
 }
 
@@ -156,6 +203,8 @@ where
         // Reduce the state without generating a default stub state.
         let old_state = mem::replace(&mut guard.state, unsafe { mem::uninitialized() });
         guard.state = old_state.reduce(message);
+
+        drop(guard);
 
         self.update();
     }
