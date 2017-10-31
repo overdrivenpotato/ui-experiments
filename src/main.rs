@@ -20,12 +20,6 @@ pub trait State: Default {
     fn reduce(self, message: Self::Message) -> Self;
 }
 
-impl State for () {
-    type Message = !;
-
-    fn reduce(self, _message: !) -> () { () }
-}
-
 pub trait App<S, B>: Copy where B: Block, S: State<Message = B::Message> {
     fn render(&self, state: &S) -> B;
 }
