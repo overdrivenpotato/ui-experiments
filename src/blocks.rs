@@ -327,22 +327,17 @@ impl<B, M> Child<M> for B
 where
     B: Block,
     B::EventHandler: 'static,
+    B::Message: 'static,
     M: From<B::Message>,
     M: 'static,
 {
     fn walk<T>(self, walker: T) -> T::Walked
     where
         T: Walker,
-        T::Message: From<M>
+        T::Message: From<M>,
     {
-        let BlockData { data, child, } = self.extract();
-        let Build { style, event_handler } = data;
+        let BlockData { data, child } = self.extract();
 
-        // TODO: This code is duplicated?..
-        // Upgrade contents with message wrapper.
-        let data = Build::with(style, events::Upgrade::new(event_handler));
-        let child = ChildUpgrade::new(child);
-
-        walker.block(data, child)
+        ProxyWalk::new(walker).block(data, child)
     }
 }
