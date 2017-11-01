@@ -50,7 +50,7 @@ where
         self.walker.block(data, child)
     }
 
-    fn text(self, text: &'static str) -> Self::Walked {
+    fn text(self, text: &str) -> Self::Walked {
         self.walker.text(text)
     }
 

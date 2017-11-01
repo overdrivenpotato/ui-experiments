@@ -1,4 +1,4 @@
-use ::{Length, Percentage, Unit};
+use super::{Length, Percentage, Unit};
 
 #[derive(Debug, Default)]
 pub struct Opacity(pub Percentage);

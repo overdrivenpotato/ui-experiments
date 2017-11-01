@@ -1,4 +1,4 @@
-use ::{EdgeMode, Length, Quadruple, Color, Unit};
+use super::{EdgeMode, Length, Quadruple, Color, Unit};
 
 #[derive(Debug, Default)]
 pub struct Border {

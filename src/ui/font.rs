@@ -1,4 +1,4 @@
-use ::Color;
+use super::Color;
 
 #[derive(Debug, Clone)]
 pub enum Weight {

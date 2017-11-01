@@ -1,4 +1,4 @@
-use ::{Double, Percentage};
+use super::{Double, Percentage};
 
 #[derive(Debug)]
 pub enum AlignMode {

@@ -1,4 +1,4 @@
-use ::{Double, Color, Unit};
+use super::{Double, Color, Unit};
 
 #[derive(Debug)]
 pub enum Size {

@@ -67,7 +67,7 @@ pub trait Walker {
         E: 'static,
         M: 'static;
 
-    fn text(self, text: &'static str) -> Self::Walked;
+    fn text(self, text: &str) -> Self::Walked;
 
     fn empty(self) -> Self::Walked;
 }
@@ -87,6 +87,30 @@ impl<M> Child<M> for &'static str {
         walker.text(self)
     }
 }
+
+impl<M> Child<M> for String {
+    fn walk<T>(self, walker: T) -> T::Walked where T: Walker, T::Message: From<M> {
+        walker.text(&self)
+    }
+}
+
+macro_rules! impl_child_num {
+    ($($T:ty)*) => {
+        $(
+            impl<M> Child<M> for $T {
+                fn walk<T>(self, walker: T) -> T::Walked
+                where
+                    T: Walker,
+                    T::Message: From<M>,
+                {
+                    walker.text(&self.to_string())
+                }
+            }
+        )*
+    }
+}
+
+impl_child_num!(u8 u16 u32 u64 usize i8 i16 i32 i64 isize);
 
 macro_rules! impl_child_tuple {
     ($(($Reference:ident $($T:ident $idx:tt),*)),*,) => {$(

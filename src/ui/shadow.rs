@@ -1,4 +1,4 @@
-use ::{Double, EdgeMode, Length};
+use super::{Double, EdgeMode, Length};
 
 #[derive(Debug, Default)]
 pub struct Shadow {

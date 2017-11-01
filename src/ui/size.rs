@@ -1,4 +1,4 @@
-use ::{Length, Unit};
+use super::{Length, Unit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Flex {

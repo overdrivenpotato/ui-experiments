@@ -82,7 +82,7 @@ where
         self
     }
 
-    fn text(self, text: &'static str) -> Self {
+    fn text(self, text: &str) -> Self {
         let text = web::document().create_text_node(text);
         self.node.append_child(&text);
 

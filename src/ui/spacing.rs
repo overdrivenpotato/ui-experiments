@@ -1,4 +1,4 @@
-use ::{Length, Quadruple};
+use super::{Length, Quadruple};
 
 #[derive(Debug, Default)]
 pub struct Spacing {

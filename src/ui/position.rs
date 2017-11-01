@@ -1,4 +1,4 @@
-use ::Unit;
+use super::Unit;
 
 #[derive(Debug)]
 pub enum VerticalHook {

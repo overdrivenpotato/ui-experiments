@@ -1,7 +1,10 @@
 [package]
-name = "ui-experiments"
+name = "blocks"
 version = "0.1.0"
 authors = ["Marko Mijalkovic <marko.mijalkovic97@gmail.com>"]
+
+[[bin]]
+name = "counter"
 
 [dependencies]
 stdweb = "*"
