@@ -12,7 +12,7 @@ mod events;
 use ui::*;
 use ui::font::Font;
 use events::Events;
-use blocks::{block, Block, Data};
+use blocks::{Block, Build};
 
 pub trait State: Default {
     type Message;
@@ -32,18 +32,6 @@ where
 {
     fn render(&self, state: &S) -> B {
         self(state)
-    }
-}
-
-impl From<!> for TestMessage {
-    fn from(_: !) -> Self {
-        unreachable!()
-    }
-}
-
-impl From<!> for ColorChange {
-    fn from(_: !) -> Self {
-        unreachable!()
     }
 }
 
@@ -98,7 +86,7 @@ fn color_change(
     let events = Events::new()
         .click(move |_| target);
 
-    Data::with(style, events).block(text)
+    Build::with(style, events).block(text)
 }
 
 pub fn app(state: &TestState) -> impl Block<Message = TestMessage> {
@@ -107,9 +95,15 @@ pub fn app(state: &TestState) -> impl Block<Message = TestMessage> {
         TestState::Green => Color::green(),
     };
 
-    block((
-        color_change(color, ColorChange::Green, "Make green"),
-        color_change(color, ColorChange::Red, "Make red"),
+    Build::new().block((
+        (
+            "A",
+            "Sub",
+            "Group",
+        ),
+        "Test Text",
+        color_change(color, ColorChange::Green, "[Click me!] Make green"),
+        color_change(color, ColorChange::Red, "[Click me!] Make red"),
     ))
 }
 

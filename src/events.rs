@@ -1,9 +1,40 @@
+use std::marker::PhantomData;
 use std::ops::Sub;
 
 pub enum Event {
     Click(Coordinates),
     Down(Coordinates, Button),
     Up(Coordinates, Button),
+}
+
+pub struct Upgrade<E, M> {
+    handler: E,
+    _message: PhantomData<M>,
+}
+
+impl<E, M> EventHandler for Upgrade<E, M>
+where
+    E: EventHandler,
+    M: From<E::Message>,
+{
+    type Message = M;
+
+    fn event(&self, event: Event) -> Option<Self::Message> {
+        self.handler.event(event).map(|m| m.into())
+    }
+}
+
+impl<E, M> Upgrade<E, M>
+where
+    E: EventHandler,
+    M: From<E::Message>
+{
+    pub fn new(handler: E) -> Self {
+        Upgrade {
+            handler,
+            _message: PhantomData,
+        }
+    }
 }
 
 pub trait EventHandler {
@@ -91,8 +122,6 @@ pub type DefaultEvents<M> = Events<
     fn(Coordinates, Button) -> M,
     fn(Coordinates, Button) -> M
 >;
-
-pub type EmptyEvents = DefaultEvents<!>;
 
 impl<M> DefaultEvents<M> {
     pub fn new() -> Self {

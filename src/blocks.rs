@@ -1,41 +1,33 @@
+use std::marker::PhantomData;
+
 use ui::Style;
+use events::{self, DefaultEvents, EventHandler};
 
-use events::{DefaultEvents, EmptyEvents, EventHandler};
-
-pub struct Data<E> {
+pub struct Build<E> {
     pub style: Style,
     pub event_handler: E,
 }
 
-impl Default for Data<EmptyEvents> {
-    fn default() -> Self {
-        Data {
-            style: Default::default(),
-            event_handler: EmptyEvents::new(),
-        }
-    }
-}
-
-impl<T> Data<DefaultEvents<T>> {
-    fn passthrough() -> Self {
-        Data {
+impl<T> Build<DefaultEvents<T>> {
+    pub fn new() -> Self {
+        Self {
             style: Default::default(),
             event_handler: DefaultEvents::new(),
         }
     }
 }
 
-impl<E> Data<E> {
-    pub fn with(style: Style, event_handler: E) -> Data<E> {
-        Data { style, event_handler }
+impl<E> Build<E> {
+    pub fn with(style: Style, event_handler: E) -> Self {
+        Self { style, event_handler }
     }
 
-    pub fn style(self, style: Style) -> Data<E> {
-        Data { style, ..self }
+    pub fn style(self, style: Style) -> Self {
+        Self { style, ..self }
     }
 
-    pub fn events<H>(self, handler: H) -> Data<H> {
-        Data {
+    pub fn events<H>(self, handler: H) -> Build<H> {
+        Build {
             style: self.style,
             event_handler: handler,
         }
@@ -43,98 +35,73 @@ impl<E> Data<E> {
 
     pub fn block<C>(self, child: C) -> impl Block<Message = E::Message>
     where
-        C: Child,
-        E: EventHandler + 'static,
-        E::Message: From<C::Message>,
+        C: Child<E::Message>,
+        E: EventHandler,
     {
         BlockData { data: self, child }
     }
 }
 
-pub trait Consolidator {
-    type Message;
-
-    fn child<C>(&mut self, C)
-    where
-        C: Child,
-        Self::Message: From<C::Message>,
-        C::Message: 'static;
-}
-
-pub trait Group {
-    type Message;
-
-    fn consolidate<C>(self, C) where C: Consolidator<Message = Self::Message>;
-}
-
 pub trait Walker {
     type Message;
+    type Walked;
 
-    fn group<G>(self, G) -> Self where G: Group<Message = Self::Message>;
-
-    fn block<E, C>(self, Data<E>, C) -> Self
+    fn group<M, G>(self, G) -> Self::Walked
     where
-        E: EventHandler<Message = Self::Message> + 'static,
-        C: Child,
-        Self::Message: From<C::Message>;
+        G: Group<M>,
+        Self::Message: From<M>;
 
-    fn text(self, text: &'static str) -> Self;
+    fn block<E, M, C>(self, Build<E>, C) -> Self::Walked
+    where
+        E: EventHandler<Message = M>,
+        C: Child<M>,
+        Self::Message: From<M>,
+        E: 'static,
+        M: 'static;
+
+    fn text(self, text: &'static str) -> Self::Walked;
+
+    fn empty(self) -> Self::Walked;
 }
 
-pub trait Child {
-    type Message: 'static;
-
-    fn walk<T>(self, T) -> T where T: Walker<Message = Self::Message>;
+pub trait Child<M> {
+    fn walk<T>(self, T) -> T::Walked where T: Walker, T::Message: From<M>;
 }
 
-impl Child for &'static str {
-    type Message = !;
+impl<M> Child<M> for () {
+    fn walk<T>(self, walker: T) -> T::Walked where T: Walker, T::Message: From<M> {
+        walker.empty()
+    }
+}
 
-    fn walk<T>(self, walker: T) -> T where T: Walker<Message = Self::Message> {
+impl<M> Child<M> for &'static str {
+    fn walk<T>(self, walker: T) -> T::Walked where T: Walker, T::Message: From<M> {
         walker.text(self)
-    }
-}
-
-impl Child for () {
-    type Message = !;
-
-    fn walk<T>(self, walker: T) -> T where T: Walker<Message = Self::Message> {
-        walker
-    }
-}
-
-impl<B> Child for B where B: Block {
-    type Message = B::Message;
-
-    fn walk<T>(self, walker: T) -> T where T: Walker<Message = Self::Message> {
-        let BlockData { data, child } = self.extract();
-
-        walker.block(data, child)
     }
 }
 
 macro_rules! impl_child_tuple {
     ($(($Reference:ident $($T:ident $idx:tt),*)),*,) => {$(
-        impl<$Reference, $($T),*> Child for ($Reference, $($T),*)
+        impl<_M, $Reference, $($T),*> Child<_M> for ($Reference, $($T),*)
         where
-            $Reference: Child,
-            $($T: Child<Message = $Reference::Message>),*
+            Self: Group<_M>,
         {
-            type Message = $Reference::Message;
-
-            fn walk<_T>(self, walker: _T) -> _T where _T: Walker<Message = Self::Message> {
+            fn walk<_T>(self, walker: _T) -> _T::Walked where _T: Walker, _T::Message: From<_M> {
                 walker.group(self)
             }
         }
 
-        impl <$Reference, $($T),*> Group for ($Reference, $($T),*)
+        impl<_M, $Reference, $($T),*> Group<_M> for ($Reference, $($T),*)
         where
-            $Reference: Child,
-            $($T: Child<Message = $Reference::Message>),*
+            _M: 'static,
+            $Reference: Child<_M>,
+            $($T: Child<_M>),*
         {
-            type Message = $Reference::Message;
-
-            fn consolidate<_C>(self, mut consolidator: _C) where _C: Consolidator<Message = Self::Message> {
+            fn consolidate<_C>(self, mut consolidator: _C)
+            where
+                _C: Consolidator,
+                _C::Message: From<_M>,
+            {
                 consolidator.child(self.0);
                 $(consolidator.child(self.$idx);)*
             }
@@ -171,40 +138,204 @@ impl_child_tuple! {
     (A B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14, P 15, Q 16, R 17, S 18, T 19, U 20, V 21, W 22, X 23, Y 24, Z 25),
 }
 
-pub struct BlockData<E, C> {
-    pub data: Data<E>,
-    pub child: C,
+pub trait Consolidator {
+    type Message;
+
+    fn child<M, C>(&mut self, C) where C: Child<M>, Self::Message: From<M>, M: 'static;
 }
 
-/// Wrapper around `BlockData` to allow for easy use of `impl Trait`.
+struct ProxyConsolidate<C, MI, MT> {
+    consolidator: C,
+    _input: PhantomData<MI>,
+    _target: PhantomData<MT>,
+}
+
+impl<C, MI, MT> ProxyConsolidate<C, MI, MT> {
+    fn new(consolidator: C) -> Self {
+        Self {
+            consolidator,
+            _input: PhantomData,
+            _target: PhantomData,
+        }
+    }
+}
+
+impl<_C, MI, MT> Consolidator for ProxyConsolidate<_C, MI, MT>
+where
+    _C: Consolidator<Message = MT>,
+    MT: From<MI>,
+    MI: 'static,
+{
+    type Message = MI;
+
+    fn child<M, C>(&mut self, child: C) where C: Child<M>, Self::Message: From<M>, M: 'static {
+        self.consolidator.child(ChildUpgrade::new(child));
+    }
+}
+
+struct GroupUpgrade<G, M> {
+    group: G,
+    _message: PhantomData<M>,
+}
+
+impl<G, M> GroupUpgrade<G, M> {
+    fn new(group: G) -> Self {
+        Self { group, _message: PhantomData }
+    }
+}
+
+impl<G, MI, MT> Group<MT> for GroupUpgrade<G, MI>
+where
+    G: Group<MI>,
+    MT: From<MI>,
+    MT: 'static,
+{
+    fn consolidate<C>(self, consolidator: C)
+    where
+        C: Consolidator,
+        C::Message: From<MT>
+    {
+        self.group.consolidate(ProxyConsolidate::new(consolidator));
+    }
+}
+
+pub trait Group<M> {
+    fn consolidate<C>(self, C)
+    where
+        C: Consolidator,
+        C::Message: From<M>;
+}
+
 pub trait Block {
-    /// Convenience type for messaging.
-    type Message: From<<Self::Child as Child>::Message> + 'static;
-    type EventHandler: EventHandler<Message = Self::Message> + 'static;
-    type Child: Child;
+    type Message;
+    type EventHandler: EventHandler<Message = Self::Message>;
+    type Child: Child<Self::Message>;
 
     fn extract(self) -> BlockData<Self::EventHandler, Self::Child>;
 }
 
+pub struct BlockData<E, C> {
+    data: Build<E>,
+    child: C,
+}
+
 impl<E, C> Block for BlockData<E, C>
 where
-    E: EventHandler + 'static,
-    C: Child,
-    E::Message: From<C::Message>,
+    E: EventHandler,
+    C: Child<E::Message>,
 {
     type Message = E::Message;
     type EventHandler = E;
     type Child = C;
 
     fn extract(self) -> BlockData<Self::EventHandler, Self::Child> {
-        self
+        let BlockData { data, child } = self;
+
+        BlockData { data, child }
     }
 }
 
-pub fn block<M, C>(child: C) -> impl Block<Message = M>
+struct ChildUpgrade<C, MI, MT> {
+    child: C,
+    _input: PhantomData<MI>,
+    _target: PhantomData<MT>
+}
+
+impl<C, MI, MT> ChildUpgrade<C, MI, MT> where C: Child<MI> {
+    fn new(child: C) -> Self {
+        Self {
+            child,
+            _input: PhantomData,
+            _target: PhantomData,
+        }
+    }
+}
+
+struct ProxyWalk<T, M> {
+    walker: T,
+    _message: PhantomData<M>,
+}
+
+impl<T, M> ProxyWalk<T, M> {
+    fn new(walker: T) -> Self {
+        Self {
+            walker,
+            _message: PhantomData,
+        }
+    }
+}
+
+impl<T, MI> Walker for ProxyWalk<T, MI>
 where
-    C: Child,
-    M: From<C::Message> + 'static,
+    T: Walker,
+    T::Message: From<MI>,
+    MI: 'static,
 {
-    BlockData { data: Data::passthrough(), child }
+    type Walked = T::Walked;
+    type Message = MI;
+
+    fn group<M, G>(self, group: G) -> Self::Walked
+    where
+        G: Group<M>,
+        Self::Message: From<M>
+    {
+        self.walker.group(GroupUpgrade::new(group))
+    }
+
+    fn block<E, M, C>(self, data: Build<E>, child: C) -> Self::Walked
+    where
+        E: EventHandler<Message = M>,
+        C: Child<M>,
+        Self::Message: From<M>,
+        E: 'static,
+    {
+        let data = Build::with(data.style, events::Upgrade::new(data.event_handler));
+        let child = ChildUpgrade::new(child);
+
+        self.walker.block(data, child)
+    }
+
+    fn text(self, text: &'static str) -> Self::Walked {
+        self.walker.text(text)
+    }
+
+    fn empty(self) -> Self::Walked {
+        self.walker.empty()
+    }
+}
+
+
+impl<C, MI, MT> Child<MT> for ChildUpgrade<C, MI, MT>
+where
+    C: Child<MI>,
+    MT: From<MI>,
+    MT: 'static,
+{
+    fn walk<T>(self, walker: T) -> T::Walked where T: Walker, T::Message: From<MT> {
+        self.child.walk(ProxyWalk::new(walker))
+    }
+}
+
+impl<B, M> Child<M> for B
+where
+    B: Block,
+    B::EventHandler: 'static,
+    M: From<B::Message>,
+    M: 'static,
+{
+    fn walk<T>(self, walker: T) -> T::Walked
+    where
+        T: Walker,
+        T::Message: From<M>
+    {
+        let BlockData { data, child, } = self.extract();
+        let Build { style, event_handler } = data;
+
+        // TODO: This code is duplicated?..
+        // Upgrade contents with message wrapper.
+        let data = Build::with(style, events::Upgrade::new(event_handler));
+        let child = ChildUpgrade::new(child);
+
+        walker.block(data, child)
+    }
 }

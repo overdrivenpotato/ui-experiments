@@ -7,7 +7,7 @@ use stdweb;
 use stdweb::web::{self, INode, Element};
 
 use events::EventHandler;
-use blocks::{Block, Child, Data, Consolidator, Group, Walker};
+use blocks::{Block, Child, Build, Consolidator, Group, Walker};
 
 use super::{App, State};
 
@@ -35,13 +35,9 @@ where
 {
     type Message = U::Message;
 
-    fn child<C>(&mut self, child: C)
-    where
-        C: Child,
-        Self::Message: From<C::Message>,
-        C::Message: 'static,
-    {
-        child.walk(Processor::new(self.node, MessageConverter::wrap(self.updater.clone())));
+    fn child<M, C>(&mut self, child: C) where C: Child<M>, Self::Message: From<M>, M: 'static {
+        let processor = Processor::new(self.node, MessageConverter::wrap(self.updater.clone()));
+        child.walk(processor);
     }
 }
 
@@ -52,10 +48,12 @@ where
     U::Message: 'static,
 {
     type Message = U::Message;
+    type Walked = Self;
 
-    fn group<G>(self, group: G) -> Self
+    fn group<M, G>(self, group: G) -> Self
     where
-        G: Group<Message = Self::Message>
+        G: Group<M>,
+        Self::Message: From<M>,
     {
         {
             let processor = Processor::new(self.node, self.updater.clone());
@@ -65,11 +63,13 @@ where
         self
     }
 
-    fn block<E, C>(self, Data { style, event_handler }: Data<E>, child: C) -> Self
+    fn block<E, M, C>(self, Build { style, event_handler }: Build<E>, child: C) -> Self::Walked
     where
-        E: EventHandler<Message = Self::Message> + 'static,
-        C: Child,
-        Self::Message: From<C::Message>,
+        E: EventHandler<Message = M>,
+        C: Child<M>,
+        Self::Message: From<M>,
+        E: 'static,
+        M: 'static,
     {
         let mut element = web::document().create_element("div");
 
@@ -86,6 +86,10 @@ where
         let text = web::document().create_text_node(text);
         self.node.append_child(&text);
 
+        self
+    }
+
+    fn empty(self) -> Self {
         self
     }
 }
@@ -140,7 +144,7 @@ where
     A: App<S, B> + 'static,
     S: State + 'static,
     B: Block<Message = S::Message> + 'static,
-    B::Message: From<<B::Child as Child>::Message>,
+    B::Child: Child<S::Message>,
 {
     fn start(app: A, root: Element, state: S) {
         let renderer: Renderer<A, S, B> = Renderer {
@@ -166,11 +170,12 @@ where
     A: App<S, B> + 'static,
     S: State + 'static,
     B: Block<Message = S::Message> + 'static,
-    B::Message: From<<B::Child as Child>::Message>,
+    B::Child: Child<S::Message>,
 {
     fn update(&self) {
         let mut guard = self.borrow_mut();
 
+        // Remove the old render.
         {
             let element = guard.root.as_node();
 
@@ -183,6 +188,7 @@ where
             }
         }
 
+        // Recreate the entire DOM structure.
         let _ = guard.app
             .render(&guard.state)
             .walk(Processor::new(&mut guard.root, self.clone()));
