@@ -227,6 +227,8 @@ where
 
     if let Some(root) = web::document().get_element_by_id(&root) {
         if let Some(mut parent) = root.parent_node() {
+            css::inject();
+
             let mut element = web::document().create_element("div");
             parent.replace_child(&element, &root);
 

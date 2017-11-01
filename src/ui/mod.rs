@@ -60,12 +60,18 @@ pub struct Double<T> {
     b: T,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct Quadruple<T> {
     a: T,
     b: T,
     c: T,
     d: T,
+}
+
+impl<T> Quadruple<T> {
+    pub fn to_tuple(self) -> (T, T, T, T) {
+        (self.a, self.b, self.c, self.d)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -1,7 +1,8 @@
-use stdweb::web::Element;
+use stdweb::web::{self, Element, INode};
 
-use ui::{font, EdgeMode, Color, Length, Style};
+use ui::{font, Quadruple, EdgeMode, Color, Length, Style};
 use ui::border::Border;
+use ui::spacing::Spacing;
 
 pub trait SetStyle {
     fn set_style(&mut self, style: Style);
@@ -62,6 +63,19 @@ impl Inline for Length {
     }
 }
 
+impl<T> Inline for Quadruple<T> where T: Inline, T: Copy {
+    fn inline(&self) -> String {
+        let (a, b, c, d) = self.clone().to_tuple();
+
+        format!("{} {} {} {}",
+            a.inline(),
+            b.inline(),
+            c.inline(),
+            d.inline()
+        )
+    }
+}
+
 impl Inline for font::Font {
     fn inline(&self) -> String {
         let mut css = Css::new();
@@ -106,11 +120,39 @@ impl Inline for Border {
     }
 }
 
+impl Inline for Spacing {
+    fn inline(&self) -> String {
+        let mut css = Css::new();
+
+        css.property("padding", self.inner.inline());
+        css.property("margin", self.outer.inline());
+
+        css.render()
+    }
+}
+
 impl Inline for Style {
     fn inline(&self) -> String {
         [
+            self.spacing.inline(),
             self.font.inline(),
             self.border.inline(),
         ].join(";")
+    }
+}
+
+fn class(name: &'static str, style: Style) -> String {
+    format!("{}{{{}}}", name, style.inline())
+}
+
+pub fn inject() {
+    if let Some(head) = web::document().query_selector("head") {
+        let override_style = class("*", Default::default());
+        let style = web::document().create_element("style");
+
+        style.set_text_content(&override_style);
+        head.append_child(&style);
+    } else {
+        println!("Failed to inject styles.");
     }
 }
