@@ -1,8 +1,9 @@
-use std::marker::PhantomData;
-
 use ui::Style;
-use events::{self, DefaultEvents, EventHandler};
+use events::{DefaultEvents, EventHandler};
 
+mod proxy;
+
+/// Block builder.
 pub struct Build<E> {
     pub style: Style,
     pub event_handler: E,
@@ -151,61 +152,6 @@ pub trait Consolidator {
     fn child<M, C>(&mut self, C) where C: Child<M>, Self::Message: From<M>, M: 'static;
 }
 
-struct ProxyConsolidate<C, MI, MT> {
-    consolidator: C,
-    _input: PhantomData<MI>,
-    _target: PhantomData<MT>,
-}
-
-impl<C, MI, MT> ProxyConsolidate<C, MI, MT> {
-    fn new(consolidator: C) -> Self {
-        Self {
-            consolidator,
-            _input: PhantomData,
-            _target: PhantomData,
-        }
-    }
-}
-
-impl<_C, MI, MT> Consolidator for ProxyConsolidate<_C, MI, MT>
-where
-    _C: Consolidator<Message = MT>,
-    MT: From<MI>,
-    MI: 'static,
-{
-    type Message = MI;
-
-    fn child<M, C>(&mut self, child: C) where C: Child<M>, Self::Message: From<M>, M: 'static {
-        self.consolidator.child(ChildUpgrade::new(child));
-    }
-}
-
-struct GroupUpgrade<G, M> {
-    group: G,
-    _message: PhantomData<M>,
-}
-
-impl<G, M> GroupUpgrade<G, M> {
-    fn new(group: G) -> Self {
-        Self { group, _message: PhantomData }
-    }
-}
-
-impl<G, MI, MT> Group<MT> for GroupUpgrade<G, MI>
-where
-    G: Group<MI>,
-    MT: From<MI>,
-    MT: 'static,
-{
-    fn consolidate<C>(self, consolidator: C)
-    where
-        C: Consolidator,
-        C::Message: From<MT>
-    {
-        self.group.consolidate(ProxyConsolidate::new(consolidator));
-    }
-}
-
 pub trait Group<M> {
     fn consolidate<C>(self, C)
     where
@@ -242,87 +188,6 @@ where
     }
 }
 
-struct ChildUpgrade<C, MI, MT> {
-    child: C,
-    _input: PhantomData<MI>,
-    _target: PhantomData<MT>
-}
-
-impl<C, MI, MT> ChildUpgrade<C, MI, MT> where C: Child<MI> {
-    fn new(child: C) -> Self {
-        Self {
-            child,
-            _input: PhantomData,
-            _target: PhantomData,
-        }
-    }
-}
-
-struct ProxyWalk<T, M> {
-    walker: T,
-    _message: PhantomData<M>,
-}
-
-impl<T, M> ProxyWalk<T, M> {
-    fn new(walker: T) -> Self {
-        Self {
-            walker,
-            _message: PhantomData,
-        }
-    }
-}
-
-impl<T, MI> Walker for ProxyWalk<T, MI>
-where
-    T: Walker,
-    T::Message: From<MI>,
-    MI: 'static,
-{
-    type Walked = T::Walked;
-    type Message = MI;
-
-    fn group<M, G>(self, group: G) -> Self::Walked
-    where
-        G: Group<M>,
-        Self::Message: From<M>
-    {
-        self.walker.group(GroupUpgrade::new(group))
-    }
-
-    fn block<E, M, C>(self, data: Build<E>, child: C) -> Self::Walked
-    where
-        E: EventHandler<Message = M>,
-        C: Child<M>,
-        Self::Message: From<M>,
-        E: 'static,
-    {
-        let data = Build::with(data.style, events::Upgrade::new(data.event_handler));
-        let child = ChildUpgrade::new(child);
-
-        self.walker.block(data, child)
-    }
-
-    fn text(self, text: &'static str) -> Self::Walked {
-        self.walker.text(text)
-    }
-
-    fn empty(self) -> Self::Walked {
-        self.walker.empty()
-    }
-}
-
-
-impl<C, MI, MT> Child<MT> for ChildUpgrade<C, MI, MT>
-where
-    C: Child<MI>,
-    MT: From<MI>,
-    MT: 'static,
-{
-    fn walk<T>(self, walker: T) -> T::Walked where T: Walker, T::Message: From<MT> {
-        self.child.walk(ProxyWalk::new(walker))
-    }
-}
-
 impl<B, M> Child<M> for B
 where
     B: Block,
@@ -338,6 +203,6 @@ where
     {
         let BlockData { data, child } = self.extract();
 
-        ProxyWalk::new(walker).block(data, child)
+        proxy::Walk::new(walker).block(data, child)
     }
 }
