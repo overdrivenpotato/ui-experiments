@@ -7,7 +7,7 @@ use stdweb;
 use stdweb::web::{self, INode, Element};
 
 use events::EventHandler;
-use blocks::{Block, Child, Build, Consolidator, Group, Walker};
+use block::{Block, Child, Build, Consolidator, Group, Walker};
 
 use super::{App, State};
 

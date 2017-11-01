@@ -4,7 +4,7 @@
 #[macro_use] extern crate stdweb;
 
 mod ui;
-mod blocks;
+mod block;
 #[cfg(target_os = "emscripten")]
 mod web;
 mod events;
@@ -12,7 +12,7 @@ mod events;
 use ui::*;
 use ui::font::Font;
 use events::Events;
-use blocks::{Block, Build};
+use block::{Block, Build};
 
 pub trait State: Default {
     type Message;

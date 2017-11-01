@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use events::{self, EventHandler};
-use blocks::{Build, Child, Consolidator, Group, Walker};
+use block::{Build, Child, Consolidator, Group, Walker};
 
 mod upgrade;
 

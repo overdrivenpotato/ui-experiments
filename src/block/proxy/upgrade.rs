@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use blocks::{self, Consolidator, Walker};
+use block::{self, Consolidator, Walker};
 
 /// Upgrade a group to send target messages.
 pub struct Group<G, M> {
@@ -14,9 +14,9 @@ impl<G, M> Group<G, M> {
     }
 }
 
-impl<G, MI, MT> blocks::Group<MT> for Group<G, MI>
+impl<G, MI, MT> block::Group<MT> for Group<G, MI>
 where
-    G: blocks::Group<MI>,
+    G: block::Group<MI>,
     MT: From<MI>,
     MT: 'static,
 {
@@ -36,7 +36,7 @@ pub struct Child<C, MI, MT> {
     _target: PhantomData<MT>
 }
 
-impl<C, MI, MT> Child<C, MI, MT> where C: blocks::Child<MI> {
+impl<C, MI, MT> Child<C, MI, MT> where C: block::Child<MI> {
     pub fn new(child: C) -> Self {
         Self {
             child,
@@ -46,9 +46,9 @@ impl<C, MI, MT> Child<C, MI, MT> where C: blocks::Child<MI> {
     }
 }
 
-impl<C, MI, MT> blocks::Child<MT> for Child<C, MI, MT>
+impl<C, MI, MT> block::Child<MT> for Child<C, MI, MT>
 where
-    C: blocks::Child<MI>,
+    C: block::Child<MI>,
     MT: From<MI>,
     MT: 'static,
 {
