@@ -15,6 +15,13 @@ impl<T> Build<DefaultEvents<T>> {
             event_handler: DefaultEvents::new(),
         }
     }
+
+    pub fn styled(style: Style) -> Self {
+        Self {
+            style,
+            .. Self::new()
+        }
+    }
 }
 
 impl<E> Build<E> {
