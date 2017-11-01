@@ -1,11 +1,14 @@
 use stdweb::web::Element;
 
-use web::Bridge;
 use ui::{font, EdgeMode, Color, Length, Style};
 use ui::border::Border;
 
-impl Bridge<Style> for Element {
-    fn bridge(&mut self, style: Style) {
+pub trait SetStyle {
+    fn set_style(&mut self, style: Style);
+}
+
+impl SetStyle for Element {
+    fn set_style(&mut self, style: Style) {
         js! {
             @{&*self}.setAttribute("style", @{style.inline()})
         }

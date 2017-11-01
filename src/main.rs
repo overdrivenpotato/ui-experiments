@@ -10,11 +10,9 @@ mod web;
 mod events;
 
 use ui::*;
-use ui::position::Position;
 use ui::font::Font;
-use ui::border::Border;
-use events::{Coordinates, Events};
-use blocks::{block, Block, Data};
+use events::Events;
+use blocks::{Block, Build};
 
 pub trait State: Default {
     type Message;
@@ -22,94 +20,94 @@ pub trait State: Default {
     fn reduce(self, message: Self::Message) -> Self;
 }
 
-impl State for () {
-    type Message = ();
-
-    fn reduce(self, _message: ()) -> () { () }
-}
-
 pub trait App<S, B>: Copy where B: Block, S: State<Message = B::Message> {
-    fn render(&self, state: S) -> B;
+    fn render(&self, state: &S) -> B;
 }
 
 impl<S, B, F> App<S, B> for F
 where
     B: Block,
     S: State<Message = B::Message>,
-    F: Fn(S) -> B + Copy,
+    F: Fn(&S) -> B + Copy,
 {
-    fn render(&self, state: S) -> B {
+    fn render(&self, state: &S) -> B {
         self(state)
     }
 }
 
-fn sub_block() -> impl Block<Message = ()> {
-    let style = Style {
-        font: Font {
-            family: font::Family::Name(String::from("serif")),
-            color: Color::green(),
-            .. Font::default()
-        },
-        border: Border {
-            width: Length(2.0),
-            color: Color::green(),
-            .. Border::default()
-        },
-        .. Style::default()
-    };
-
-    let events = Events::new()
-        .down(|Coordinates { x, y }, button| {
-            println!("Button {:?} down in sub block at {}, {}", button, x, y);
-        })
-        .up(|Coordinates { x, y }, button| {
-            println!("Button {:?} up in sub block at {}, {}", button, x, y);
-        })
-        .click(|Coordinates { x, y }| {
-            println!("Mouse clicked in sub block at {}, {}", x, y);
-        });
-
-    block(Data::with(style, events), (
-        "Sub",
-        "Block",
-    ))
+pub enum TestState {
+    Red,
+    Green,
 }
 
-pub fn test(_state: ()) -> impl Block<Message = ()> {
+impl Default for TestState {
+    fn default() -> Self {
+        TestState::Green
+    }
+}
+
+pub enum TestMessage {
+    Change(ColorChange),
+}
+
+#[derive(Copy, Clone)]
+pub enum ColorChange {
+    Red,
+    Green,
+}
+
+impl From<ColorChange> for TestMessage {
+    fn from(target: ColorChange) -> Self {
+        TestMessage::Change(target)
+    }
+}
+
+impl State for TestState {
+    type Message = TestMessage;
+
+    fn reduce(self, message: Self::Message) -> Self {
+        match message {
+            TestMessage::Change(ColorChange::Red) => TestState::Red,
+            TestMessage::Change(ColorChange::Green) => TestState::Green,
+        }
+    }
+}
+
+fn color_change(
+    color: Color,
+    target: ColorChange,
+    text: &'static str
+) -> impl Block<Message = ColorChange> {
     let style = Style {
-        position: Position::Anchor,
-        font: Font {
-            family: font::Family::Name(String::from("sans-serif")),
-            weight: font::Weight::Regular,
-            style: font::Style::Italic,
-            color: Color::black(),
-        },
-        border: Border {
-            color: Color::black(),
-            width: Length(2.0),
-            .. Border::default()
-        },
+        font: Font { color, .. Font::default() },
         .. Style::default()
     };
 
     let events = Events::new()
-        .click(|Coordinates { x, y }| println!("Mouse clicked at {}, {}", x, y))
-        .down(|Coordinates { x, y }, button| {
-            println!("Button {:?} down at {}, {}", button, x, y);
-        })
-        .up(|Coordinates { x, y }, button| {
-            println!("Button {:?} up at {}, {}", button, x, y);
-        });
+        .click(move |_| target);
 
-    block(Data::with(style, events), (
-        "Testing",
-        "123",
-        "456",
-        sub_block(),
+    Build::with(style, events).block(text)
+}
+
+pub fn app(state: &TestState) -> impl Block<Message = TestMessage> {
+    let color = match *state {
+        TestState::Red => Color::red(),
+        TestState::Green => Color::green(),
+    };
+
+    Build::new().block((
+        (
+            "A",
+            "Sub",
+            "Group",
+        ),
+        "Test Text",
+        color_change(color, ColorChange::Green, "[Click me!] Make green"),
+        color_change(color, ColorChange::Red, "[Click me!] Make red"),
     ))
 }
 
 fn main() {
     #[cfg(target_os = "emscripten")]
-    web::launch("root", test);
+    web::launch("root", app);
 }
