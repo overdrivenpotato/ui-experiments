@@ -43,14 +43,6 @@ pub trait EventHandler {
     fn event(&self, event: Event) -> Option<Self::Message>;
 }
 
-impl EventHandler for ! {
-    type Message = !;
-
-    fn event(&self, _: Event) -> Option<Self::Message> {
-        unreachable!()
-    }
-}
-
 impl<M, C, D, U> EventHandler for Events<M, C, D, U>
     where C: Fn(Coordinates) -> M,
           D: Fn(Coordinates, Button) -> M,

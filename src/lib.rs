@@ -1,4 +1,4 @@
-#![feature(conservative_impl_trait, never_type)]
+#![feature(conservative_impl_trait)]
 #![recursion_limit="128"]
 
 #[macro_use] extern crate stdweb;
