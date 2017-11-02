@@ -36,7 +36,7 @@ where
     type Message = U::Message;
 
     fn child<M, C>(&mut self, child: C) where C: Child<M>, Self::Message: From<M>, M: 'static {
-        let processor = Processor::new(self.node, MessageConverter::wrap(self.updater.clone()));
+        let processor = Processor::new(self.node, self.updater.clone());
         child.walk(processor);
     }
 }
@@ -77,7 +77,7 @@ where
         element.set_handler(event_handler, MessageConverter::wrap(self.updater.clone()));
 
         self.node.append_child(&element);
-        child.walk(Processor::new(&mut element, MessageConverter::wrap(self.updater.clone())));
+        child.walk(Processor::new(&mut element, self.updater.clone()));
 
         self
     }

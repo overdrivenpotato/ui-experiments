@@ -10,6 +10,7 @@ pub struct Build<E> {
 }
 
 impl<T> Build<DefaultEvents<T>> {
+    /// Create a block.
     pub fn new() -> Self {
         Self {
             style: Default::default(),
@@ -17,6 +18,7 @@ impl<T> Build<DefaultEvents<T>> {
         }
     }
 
+    /// Create a styled block.
     pub fn styled(style: Style) -> Self {
         Self {
             style,
@@ -26,14 +28,17 @@ impl<T> Build<DefaultEvents<T>> {
 }
 
 impl<E> Build<E> {
+    /// Create a styled block with an event handler.
     pub fn with(style: Style, event_handler: E) -> Self {
         Self { style, event_handler }
     }
 
+    /// Update the block style.
     pub fn style(self, style: Style) -> Self {
         Self { style, ..self }
     }
 
+    /// Update the block events.
     pub fn events<H>(self, handler: H) -> Build<H> {
         Build {
             style: self.style,
@@ -41,6 +46,7 @@ impl<E> Build<E> {
         }
     }
 
+    /// Finalize a block with content.
     pub fn block<C>(self, child: C) -> impl Block<Message = E::Message>
     where
         C: Child<E::Message>,
