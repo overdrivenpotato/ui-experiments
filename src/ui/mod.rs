@@ -42,7 +42,7 @@ impl Default for Percentage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum EdgeMode {
     Inset,
     Outset,
@@ -54,7 +54,7 @@ impl Default for EdgeMode {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Double<T> {
     a: T,
     b: T,
@@ -74,7 +74,7 @@ impl<T> Quadruple<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Unit {
     Length(Length),
     Percentage(Percentage),
@@ -86,7 +86,7 @@ impl Default for Unit {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Style {
     pub position: position::Position,
     pub size: size::Size,

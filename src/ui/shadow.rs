@@ -1,6 +1,6 @@
 use super::{Double, EdgeMode, Length};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Shadow {
     pub mode: EdgeMode,
     pub offset: Double<Length>,

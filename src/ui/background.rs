@@ -1,6 +1,6 @@
 use super::{Double, Color, Unit};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Size {
     DoubleUnit(Double<Unit>),
     Cover,
@@ -13,7 +13,7 @@ impl Default for Size {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Background {
     Color(Color),
     Image(Double<Unit>, Size),

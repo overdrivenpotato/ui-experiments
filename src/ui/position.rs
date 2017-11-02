@@ -1,18 +1,18 @@
 use super::Unit;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum VerticalHook {
     Top(Unit),
     Bottom(Unit),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum HorizontalHook {
     Left(Unit),
     Right(Unit),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum SingleHook {
     Top(Unit),
     Bottom(Unit),
@@ -20,7 +20,7 @@ pub enum SingleHook {
     Right(Unit),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Hook {
     Single(SingleHook),
     Double {
@@ -29,7 +29,7 @@ pub enum Hook {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Position {
     Passthrough,
     Anchor,

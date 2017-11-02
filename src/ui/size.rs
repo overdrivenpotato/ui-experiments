@@ -1,19 +1,19 @@
 use super::{Length, Unit};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Flex {
     Push,
     Limit(Unit),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Sizing {
     pub target: Unit,
     pub min: Flex,
     pub max: Flex,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Size {
     pub width: Sizing,
     pub height: Sizing,

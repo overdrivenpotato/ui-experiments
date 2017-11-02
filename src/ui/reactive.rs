@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Cursor {
     Normal,
     Pointer,
@@ -10,7 +10,7 @@ impl Default for Cursor {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Reactive {
     pub cursor: Cursor,
 }

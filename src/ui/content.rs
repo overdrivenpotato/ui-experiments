@@ -1,6 +1,6 @@
 use super::{Double, Percentage};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AlignMode {
     Start,
     Center,
@@ -15,10 +15,10 @@ impl Default for AlignMode {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Align(pub Double<AlignMode>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Direction {
     Forwards,
     Backwards,
@@ -30,7 +30,7 @@ impl Default for Direction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Flow {
     Row(Direction),
     Column(Direction),
@@ -42,7 +42,7 @@ impl Default for Flow {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Scale(pub Percentage);
 
 impl Default for Scale {
@@ -51,7 +51,7 @@ impl Default for Scale {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Content {
     pub scale: Scale,
     pub align: Align,
