@@ -23,11 +23,11 @@ pub trait App<S, B>: Copy where B: Block, S: State<Message = B::Message> {
     fn render(&self, state: &S) -> B;
 }
 
-impl<S, B, F> App<S, B> for F
+impl<F, S, B> App<S, B> for F
 where
     B: Block,
     S: State<Message = B::Message>,
-    F: Fn(&S) -> B + Copy,
+    F: Copy + Fn(&S) -> B,
 {
     fn render(&self, state: &S) -> B {
         self(state)
