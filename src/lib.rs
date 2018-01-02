@@ -5,8 +5,6 @@
 
 pub mod ui;
 pub mod block;
-#[cfg(target_os = "emscripten")]
-pub mod web;
 pub mod events;
 
 pub use block::{Block, Build};

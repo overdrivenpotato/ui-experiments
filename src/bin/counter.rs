@@ -76,6 +76,5 @@ fn app(state: &State) -> impl Block<Message = Message> {
 }
 
 fn main() {
-    #[cfg(target_os = "emscripten")]
-    blocks::web::launch("root", app);
+    // TODO: Launch example.
 }
