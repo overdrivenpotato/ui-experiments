@@ -1,33 +1,38 @@
 #![feature(conservative_impl_trait)]
-#![recursion_limit="128"]
 
-#[macro_use] extern crate stdweb;
+extern crate serde;
+extern crate serde_json;
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate lazy_static;
 
 pub mod ui;
 pub mod block;
 pub mod events;
 
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+pub mod web;
+
+use std::marker::PhantomData;
+
 pub use block::{Block, Build};
 pub use events::Events;
-pub use ui::Style;
 
-pub trait State: Default {
-    type Message;
-
-    fn reduce(self, message: Self::Message) -> Self;
+#[derive(Copy, Clone)]
+pub struct Reactor<M> {
+    _message: PhantomData<M>,
 }
 
-pub trait App<S, B>: Copy where B: Block, S: State<Message = B::Message> {
-    fn render(&self, state: &S) -> B;
-}
-
-impl<F, S, B> App<S, B> for F
-where
-    B: Block,
-    S: State<Message = B::Message>,
-    F: Copy + Fn(&S) -> B,
-{
-    fn render(&self, state: &S) -> B {
-        self(state)
+impl<M> Reactor<M> {
+    pub fn new() -> Self {
+        Self {
+            _message: PhantomData
+        }
     }
+}
+
+pub trait State: Send + 'static {
+    type Message: 'static + Send;
+
+    fn new(Reactor<Self::Message>) -> Self;
+    fn reduce(&mut self, Self::Message);
 }

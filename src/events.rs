@@ -2,9 +2,10 @@ use std::marker::PhantomData;
 use std::ops::Sub;
 
 pub enum Event {
+    Render,
     Click(Coordinates),
-    Down(Coordinates, Button),
-    Up(Coordinates, Button),
+    MouseDown(Coordinates, Button),
+    MouseUp(Coordinates, Button),
 }
 
 pub struct Upgrade<E, M> {
@@ -15,12 +16,12 @@ pub struct Upgrade<E, M> {
 impl<E, M> EventHandler for Upgrade<E, M>
 where
     E: EventHandler,
-    M: From<E::Message>,
+    M: 'static + Send + From<E::Message>,
 {
     type Message = M;
 
     fn event(&self, event: Event) -> Option<Self::Message> {
-        self.handler.event(event).map(|m| m.into())
+        self.handler.event(event).map(M::from)
     }
 }
 
@@ -37,24 +38,28 @@ where
     }
 }
 
-pub trait EventHandler {
-    type Message;
+pub trait EventHandler: Send {
+    type Message: 'static + Send;
 
     fn event(&self, event: Event) -> Option<Self::Message>;
 }
 
-impl<M, C, D, U> EventHandler for Events<M, C, D, U>
-    where C: Fn(Coordinates) -> M,
-          D: Fn(Coordinates, Button) -> M,
-          U: Fn(Coordinates, Button) -> M,
+impl<M, R, C, D, U> EventHandler for Events<M, R, C, D, U>
+where
+    R: Send + Fn() -> M,
+    C: Send + Fn(Coordinates) -> M,
+    D: Send + Fn(Coordinates, Button) -> M,
+    U: Send + Fn(Coordinates, Button) -> M,
+    M: 'static + Send,
 {
     type Message = M;
 
     fn event(&self, event: Event) -> Option<Self::Message> {
         match event {
+            Event::Render => self.render.as_ref().map(|r| r()),
             Event::Click(coordinates) => self.click.as_ref().map(|h| h(coordinates)),
-            Event::Down(coordinates, button) => self.down.as_ref().map(|h| h(coordinates, button)),
-            Event::Up(coordinates, button) => self.up.as_ref().map(|h| h(coordinates, button)),
+            Event::MouseDown(coordinates, button) => self.down.as_ref().map(|h| h(coordinates, button)),
+            Event::MouseUp(coordinates, button) => self.up.as_ref().map(|h| h(coordinates, button)),
         }
     }
 }
@@ -98,11 +103,14 @@ pub enum Button {
     Middle,
 }
 
-pub struct Events<M, C, D, U>
-    where C: Fn(Coordinates) -> M,
-          D: Fn(Coordinates, Button) -> M,
-          U: Fn(Coordinates, Button) -> M
+pub struct Events<M, R, C, D, U>
+where
+    R: Fn() -> M,
+    C: Fn(Coordinates) -> M,
+    D: Fn(Coordinates, Button) -> M,
+    U: Fn(Coordinates, Button) -> M
 {
+    render: Option<R>,
     click: Option<C>,
     down: Option<D>,
     up: Option<U>,
@@ -110,6 +118,7 @@ pub struct Events<M, C, D, U>
 
 pub type DefaultEvents<M> = Events<
     M,
+    fn() -> M,
     fn(Coordinates) -> M,
     fn(Coordinates, Button) -> M,
     fn(Coordinates, Button) -> M
@@ -118,6 +127,7 @@ pub type DefaultEvents<M> = Events<
 impl<M> DefaultEvents<M> {
     pub fn new() -> Self {
         Events {
+            render: None,
             click: None,
             down: None,
             up: None,
@@ -125,38 +135,55 @@ impl<M> DefaultEvents<M> {
     }
 }
 
-impl<M, C, D, U> Events<M, C, D, U>
-    where C: Fn(Coordinates) -> M,
-          D: Fn(Coordinates, Button) -> M,
-          U: Fn(Coordinates, Button) -> M
+impl<M, R, C, D, U> Events<M, R, C, D, U>
+where
+    R: Fn() -> M,
+    C: Fn(Coordinates) -> M,
+    D: Fn(Coordinates, Button) -> M,
+    U: Fn(Coordinates, Button) -> M
 {
-    pub fn click<H>(self, handler: H) -> Events<M, H, D, U>
+    pub fn click<H>(self, handler: H) -> Events<M, R, H, D, U>
         where H: Fn(Coordinates) -> M
     {
         Events {
+            render: self.render,
             click: Some(handler),
             down: self.down,
             up: self.up,
         }
     }
 
-    pub fn down<H>(self, handler: H) -> Events<M, C, H, U>
+    pub fn mouse_down<H>(self, handler: H) -> Events<M, R, C, H, U>
         where H: Fn(Coordinates, Button) -> M
     {
         Events {
+            render: self.render,
             click: self.click,
             down: Some(handler),
             up: self.up,
         }
     }
 
-    pub fn up<H>(self, handler: H) -> Events<M, C, D, H>
+    pub fn mouse_up<H>(self, handler: H) -> Events<M, R, C, D, H>
         where H: Fn(Coordinates, Button) -> M
     {
         Events {
+            render: self.render,
             click: self.click,
             down: self.down,
             up: Some(handler),
+        }
+    }
+
+    pub fn render<H>(self, handler: H) -> Events<M, H, C, D, U>
+    where
+        H: Fn() -> M,
+    {
+        Events {
+            render: Some(handler),
+            click: self.click,
+            down: self.down,
+            up: self.up,
         }
     }
 }

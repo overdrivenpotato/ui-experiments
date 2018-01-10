@@ -17,8 +17,7 @@ impl<G, M> Group<G, M> {
 impl<G, MI, MT> block::Group<MT> for Group<G, MI>
 where
     G: block::Group<MI>,
-    MT: From<MI>,
-    MT: 'static,
+    MT: 'static + Send + From<MI>,
 {
     fn consolidate<C>(self, consolidator: C)
     where
@@ -49,8 +48,8 @@ impl<C, MI, MT> Child<C, MI, MT> where C: block::Child<MI> {
 impl<C, MI, MT> block::Child<MT> for Child<C, MI, MT>
 where
     C: block::Child<MI>,
-    MT: From<MI>,
-    MT: 'static,
+    MI: 'static,
+    MT: 'static + Send + From<MI>,
 {
     fn walk<T>(self, walker: T) -> T::Walked where T: Walker, T::Message: From<MT> {
         self.child.walk(super::Walk::new(walker))

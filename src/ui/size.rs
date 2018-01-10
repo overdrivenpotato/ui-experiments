@@ -13,6 +13,12 @@ pub struct Sizing {
     pub max: Flex,
 }
 
+impl Sizing {
+    pub fn target(&mut self, target: Unit) {
+        self.target = target;
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Size {
     pub width: Sizing,
@@ -22,9 +28,9 @@ pub struct Size {
 impl Default for Size {
     fn default() -> Self {
         let sizing = Sizing {
-            target: Unit::Length(Length(0.0)),
-            min: Flex::Limit(Unit::Length(Length(0.0))),
-            max: Flex::Limit(Unit::Length(Length(0.0))),
+            target: Unit::spx(0.0),
+            min: Flex::Limit(Unit::spx(0.0)),
+            max: Flex::Limit(Unit::spx(1.0 / 0.0)),
         };
 
         Size {

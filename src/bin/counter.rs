@@ -2,79 +2,58 @@
 
 extern crate blocks;
 
-use blocks::ui::{Color, Length};
-use blocks::ui::border::Border;
-use blocks::{Block, Build, Style, Events};
+use blocks::{ui, Block, Reactor, Build, Events};
 
 struct State {
-    clicks: i32,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            clicks: 0
-        }
-    }
-}
-
-enum Message {
-    Click(Click),
+    number: i32,
 }
 
 #[derive(Copy, Clone)]
-enum Click {
-    Up,
-    Down,
-}
-
-impl From<Click> for Message {
-    fn from(click: Click) -> Self {
-        Message::Click(click)
-    }
+enum Message {
+    Add,
+    Subtract,
 }
 
 impl blocks::State for State {
     type Message = Message;
 
-    fn reduce(self, message: Self::Message) -> Self {
-        use Message::*;
-        use Click;
+    fn new(_: Reactor<Self::Message>) -> Self {
+        Self {
+            number: 0
+        }
+    }
 
+    fn reduce(&mut self, message: Self::Message) {
         match message {
-            Click(Click::Up) => State {
-                clicks: self.clicks + 1,
-            },
-            Click(Click::Down) => State {
-                clicks: self.clicks - 1,
-            },
+            Message::Add => self.number += 1,
+            Message::Subtract => self.number -= 1,
         }
     }
 }
 
-fn color_change(message: Click, text: &'static str) -> impl Block<Message = Click> {
-    let style = Style {
-        border: Border {
-            width: Length(1.0),
-            color: Color::black(),
-            .. Border::default()
-        },
-        .. Style::default()
-    };
+/// Create a button.
+fn make_button(text: &'static str, message: Message) -> impl Block<Message = Message> {
+    let style = ui::Style::new(move |s| {
+        s.font.color(ui::Color::white());
+        s.background.color(ui::Color::black());
+        s.size.width.target(ui::Unit::spx(100.0));
+        s.reactive.cursor(ui::Cursor::Pointer);
+    });
 
-    let events = Events::new().click(move |_| message);
+    let events = Events::new()
+        .mouse_down(move |_, _| message);
 
     Build::with(style, events).block(text)
 }
 
 fn app(state: &State) -> impl Block<Message = Message> {
     Build::new().block((
-        format!("Clicks: {}", state.clicks),
-        color_change(Click::Up, "Add 1"),
-        color_change(Click::Down, "Subtract 1"),
+        format!("Number: {}", state.number),
+        make_button("Add 1 to number", Message::Add),
+        make_button("Subtract 1 from number", Message::Subtract),
     ))
 }
 
 fn main() {
-    // TODO: Launch example.
+    blocks::web::launch(app);
 }

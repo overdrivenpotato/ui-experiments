@@ -39,3 +39,9 @@ impl Default for Font {
         }
     }
 }
+
+impl Font {
+    pub fn color(&mut self, color: Color) {
+        self.color = color;
+    }
+}

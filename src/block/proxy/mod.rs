@@ -24,7 +24,7 @@ impl<T, MI> Walker for Walk<T, MI>
 where
     T: Walker,
     T::Message: From<MI>,
-    MI: 'static,
+    MI: 'static + Send,
 {
     type Walked = T::Walked;
     type Message = MI;
@@ -41,6 +41,7 @@ where
     where
         E: EventHandler<Message = M>,
         C: Child<M>,
+        M: 'static + Send,
         Self::Message: From<M>,
         E: 'static,
     {
@@ -80,7 +81,7 @@ impl<_C, MI, MT> Consolidator for Consolidate<_C, MI, MT>
 where
     _C: Consolidator<Message = MT>,
     MT: From<MI>,
-    MI: 'static,
+    MI: 'static + Send,
 {
     type Message = MI;
 

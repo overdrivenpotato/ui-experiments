@@ -9,6 +9,20 @@ pub mod render;
 pub mod reactive;
 pub mod font;
 
+// Enums should be re-exported.
+use self::position::Position;
+use self::size::Size;
+use self::content::Content;
+use self::spacing::Spacing;
+use self::border::Border;
+pub use self::background::Background;
+use self::shadow::Shadow;
+use self::render::Render;
+use self::reactive::Reactive;
+use self::font::Font;
+
+pub use self::reactive::Cursor;
+
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Color(u8, u8, u8, u8);
 
@@ -17,16 +31,40 @@ impl Color {
         (self.0, self.1, self.2, self.3)
     }
 
-    pub fn black() -> Color {
-        Color(0, 0, 0, 255)
+    pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Color(r, g, b, a)
     }
 
-    pub fn green() -> Color {
-        Color(0, 128, 0, 255)
+    pub fn rgb(r: u8, g: u8, b: u8) -> Self {
+        Color(r, g, b, 255)
     }
 
-    pub fn red() -> Color {
-        Color(128, 0, 0, 255)
+    pub fn white() -> Self {
+        Self::rgb(0, 0, 0)
+    }
+
+    pub fn black() -> Self {
+        Self::rgb(0, 0, 0)
+    }
+
+    pub fn green() -> Self {
+        Self::rgb(0, 128, 0)
+    }
+
+    pub fn red() -> Self {
+        Self::rgb(128, 0, 0)
+    }
+}
+
+macro_rules! from_primitive_number {
+    ($t:ident, ($target:ty), $($p:ty),+) => {
+        $(
+            impl From<$p> for $t {
+                fn from(p: $p) -> Self {
+                    $t(p as $target)
+                }
+            }
+        )*
     }
 }
 
@@ -41,6 +79,9 @@ impl Default for Percentage {
         Percentage(100.0)
     }
 }
+
+from_primitive_number!(Length, (f32), u8, u16, u32, u64, i8, i16, i32, i64, usize, isize, f32, f64);
+from_primitive_number!(Percentage, (f32), u8, u16, u32, u64, i8, i16, i32, i64, usize, isize, f32, f64);
 
 #[derive(Debug, Clone, Copy)]
 pub enum EdgeMode {
@@ -68,9 +109,15 @@ pub struct Quadruple<T> {
     d: T,
 }
 
-impl<T> Quadruple<T> {
-    pub fn to_tuple(self) -> (T, T, T, T) {
+impl<T> Into<(T, T, T, T)> for Quadruple<T> {
+    fn into(self) -> (T, T, T, T) {
         (self.a, self.b, self.c, self.d)
+    }
+}
+
+impl<T> From<(T, T, T, T)> for Quadruple<T> {
+    fn from((a, b, c, d): (T, T, T, T)) -> Self {
+        Quadruple { a, b, c, d }
     }
 }
 
@@ -78,6 +125,16 @@ impl<T> Quadruple<T> {
 pub enum Unit {
     Length(Length),
     Percentage(Percentage),
+}
+
+impl Unit {
+    pub fn percentage(p: f32) -> Unit {
+        Unit::Percentage(Percentage(p))
+    }
+
+    pub fn spx<T>(spx: T) -> Unit where T: Into<f32> {
+        Unit::Length(Length(spx.into()))
+    }
 }
 
 impl Default for Unit {
@@ -98,4 +155,12 @@ pub struct Style {
     pub render: render::Render,
     pub reactive: reactive::Reactive,
     pub font: font::Font,
+}
+
+impl Style {
+    pub fn new<F>(f: F) -> Style where F: Fn(&mut Style) {
+        let mut s = Default::default();
+        f(&mut s);
+        s
+    }
 }

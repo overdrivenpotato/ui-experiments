@@ -1,4 +1,6 @@
 target/
+node_modules
+loader/build/
 
 # Vim
 [._]*.s[a-v][a-z]
