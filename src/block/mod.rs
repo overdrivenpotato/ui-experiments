@@ -21,10 +21,7 @@ impl<T> Build<DefaultEvents<T>> {
 
     /// Create a styled block builder.
     pub fn styled(style: Style) -> Self {
-        Self {
-            style,
-            .. Self::new()
-        }
+        Self { style, .. Self::new() }
     }
 }
 
@@ -32,19 +29,6 @@ impl<E> Build<E> {
     /// Create a styled block builder with an event handler.
     pub fn with(style: Style, event_handler: E) -> Self {
         Self { style, event_handler }
-    }
-
-    /// Update the block style.
-    pub fn style(self, style: Style) -> Self {
-        Self { style, ..self }
-    }
-
-    /// Update the block events.
-    pub fn events<H>(self, handler: H) -> Build<H> {
-        Build {
-            style: self.style,
-            event_handler: handler,
-        }
     }
 
     /// Create a block from this builder.
