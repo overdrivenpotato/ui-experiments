@@ -196,8 +196,8 @@ mod test {
     fn messages() {
         let events = Events::new()
             .click(|_| 1)
-            .down(|_, _| 2)
-            .up(|_, _| 3);
+            .mouse_down(|_, _| 2)
+            .mouse_up(|_, _| 3);
 
         let coordinates = Coordinates {
             x: 0,
@@ -207,8 +207,8 @@ mod test {
         let button = Button::Left;
 
         assert_eq!(Some(1), events.event(Event::Click(coordinates)));
-        assert_eq!(Some(2), events.event(Event::Down(coordinates, button)));
-        assert_eq!(Some(3), events.event(Event::Up(coordinates, button)));
+        assert_eq!(Some(2), events.event(Event::MouseDown(coordinates, button)));
+        assert_eq!(Some(3), events.event(Event::MouseUp(coordinates, button)));
     }
 
     #[test]
@@ -220,18 +220,18 @@ mod test {
     }
 
     #[test]
-    fn down() {
+    fn mouse_down() {
         let events = Events::new()
-            .down(|Coordinates { x, y }, button| (x, y, button));
+            .mouse_down(|Coordinates { x, y }, button| (x, y, button));
 
-        assert_eq!(Some((1, 2, Button::Left)), events.event(Event::Down(Coordinates { x: 1, y: 2 }, Button::Left)));
+        assert_eq!(Some((1, 2, Button::Left)), events.event(Event::MouseDown(Coordinates { x: 1, y: 2 }, Button::Left)));
     }
 
     #[test]
-    fn up() {
+    fn mouse_up() {
         let events = Events::new()
-            .up(|Coordinates { x, y }, button| (x, y, button));
+            .mouse_up(|Coordinates { x, y }, button| (x, y, button));
 
-        assert_eq!(Some((1, 2, Button::Left)), events.event(Event::Up(Coordinates { x: 1, y: 2 }, Button::Left)));
+        assert_eq!(Some((1, 2, Button::Left)), events.event(Event::MouseUp(Coordinates { x: 1, y: 2 }, Button::Left)));
     }
 }
