@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
-use ::State;
 use events::{Event, Coordinates, Button};
 use block::{Block, Child};
 use super::ffi::{self, AtomId, Attribute, EventType};

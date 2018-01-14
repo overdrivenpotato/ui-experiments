@@ -8,30 +8,36 @@ extern crate serde_json;
 pub mod ui;
 pub mod block;
 pub mod events;
+mod reactor;
 
 #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 pub mod web;
 
-use std::marker::PhantomData;
-
+pub use reactor::Reactor;
 pub use block::{Block, Build};
 pub use events::Events;
 
-#[derive(Copy, Clone)]
-pub struct Reactor<M> {
-    _message: PhantomData<M>,
+pub trait Update: Send + 'static {
+    type Message: 'static + Send;
+
+    fn reduce(&self, message: Self::Message);
+    fn clone(&self) -> Box<Update<Message = Self::Message>>;
 }
 
-impl<M> Reactor<M> {
-    pub fn new() -> Self {
-        Self {
-            _message: PhantomData
-        }
+impl<M> Update for Box<Update<Message = M>> where M: Send + 'static {
+    type Message = M;
+
+    fn reduce(&self, message: Self::Message) {
+        (**self).reduce(message);
+    }
+
+    fn clone(&self) -> Box<Update<Message = Self::Message>> {
+        (**self).clone()
     }
 }
 
 pub trait State: Send + 'static {
-    type Message: 'static + Send;
+    type Message: Send + 'static;
 
     fn new(Reactor<Self::Message>) -> Self;
     fn reduce(&mut self, Self::Message);

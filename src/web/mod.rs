@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
 
-use ::{State, Reactor};
+use ::{State, Reactor, Update};
 use ui::Style;
 use block::{proxy, Block, BlockData, Walker, Group, Child, Build, Consolidator};
 use events::{EventHandler, Upgrade};
@@ -207,7 +207,7 @@ where
     fn render(&self) {
         let mut guard = self.instance.lock().unwrap();
         let candidate = Candidate::from(guard.render());
-        guard.root().upgrade(candidate, self.clone());
+        guard.root().upgrade(candidate, Clone::clone(self));
     }
 
     fn message(&self, message: S::Message) {
@@ -234,12 +234,6 @@ where
     }
 }
 
-pub trait Update: Clone + Send + 'static {
-    type Message: 'static + Send;
-
-    fn reduce(&self, message: Self::Message);
-}
-
 impl<S, F, B> Update for Handle<S, F, B>
 where
     Self: 'static,
@@ -252,6 +246,26 @@ where
     fn reduce(&self, message: Self::Message) {
         self.message(message);
         self.render();
+    }
+
+    fn clone(&self) -> Box<Update<Message = Self::Message>> {
+        Box::new(Clone::clone(self))
+    }
+}
+
+impl<U> Update for Arc<Mutex<Option<U>>> where U: Update {
+    type Message = U::Message;
+
+    fn reduce(&self, message: Self::Message) {
+        if let Ok(mut guard) = self.lock() {
+            if let Some(ref mut u) = *guard {
+                u.reduce(message);
+            }
+        }
+    }
+
+    fn clone(&self) -> Box<Update<Message = Self::Message>> {
+        Box::new(Clone::clone(self)) as Box<Update<Message = Self::Message>>
     }
 }
 
@@ -271,10 +285,19 @@ where
     css::inject();
 
     let root = Atom::mount();
-    let state = S::new(Reactor::new());
+    let tmp = Arc::new(Mutex::new(None));
+    let state = S::new(Reactor::new(Clone::clone(&tmp)));
     let instance = Instance::wrap(root, state, app);
 
     let handle: Handle<S, F, B> = instance.into();
+
+    {
+        let guard = tmp.lock();
+
+        if let Ok(mut guard) = guard {
+            *guard = Some(Clone::clone(&handle));
+        }
+    }
 
     handle.render();
 
@@ -320,7 +343,7 @@ where
 }
 
 /// Launch an app with no state. Useful for static views and prototyping.
-pub fn simple<F, B>(app: F)
+pub fn stateless<F, B>(app: F)
 where
     B: Block,
     B::Message: 'static,
@@ -331,13 +354,13 @@ where
     impl<T> State for EmptyState<T> where T: 'static + Send {
         type Message = T;
 
-        fn new(_reactor: Reactor<Self::Message>) -> Self {
+        fn new(_: Reactor<Self::Message>) -> Self {
             EmptyState {
                 _message: PhantomData
             }
         }
 
-        fn reduce(&mut self, _message: Self::Message) {}
+        fn reduce(&mut self, _: Self::Message) {}
     }
 
     launch(move |_: &EmptyState<B::Message>| app())
