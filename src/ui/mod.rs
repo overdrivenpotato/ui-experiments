@@ -40,7 +40,7 @@ impl Color {
     }
 
     pub fn white() -> Self {
-        Self::rgb(0, 0, 0)
+        Self::rgb(255, 255, 255)
     }
 
     pub fn black() -> Self {
